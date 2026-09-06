@@ -1,0 +1,40 @@
+# Dependencies & Package Managers
+node_modules/
+.pnpm-store/
+
+# Angular & Build Outputs
+.angular/
+dist/
+out-tsc/
+
+# .NET / C# Build Outputs & IDE Files
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# System & OS Files
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
+
+# Temporary Scripts, Archives, & Generated Logs
+codebase*.txt
+clamped_codebase/
+build_codebase_txt.ps1
+generate_clamped_files.ps1
+generate_unpack_script.ps1
+make_txt_files.ps1
+restore_frontend.*
+restore_built_app.*
+frontend_*.zip
+run_api_tests.ps1
+test_all_apis.ps1
+test_apis_one_by_one.ps1
+.system_generated/
+scratch/
+test_unpack_dir/

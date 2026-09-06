@@ -1,0 +1,115 @@
+<div>
+  <!-- Title Header -->
+  <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h1 style="font-size: 2rem; font-weight: 800;">🙋 My Attendee Portal</h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">Manage your active event registrations, waitlist status, and participation history.</p>
+    </div>
+    <a routerLink="/events" class="btn btn-primary">
+      🌐 Browse Available Events
+    </a>
+  </div>
+
+  <!-- Action Feedback Banner -->
+  <div *ngIf="actionMessage" class="badge badge-attended" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; font-size: 0.9rem; justify-content: center; text-transform: none;">
+    ✅ {{ actionMessage }}
+  </div>
+  <div *ngIf="actionError" class="badge badge-closed" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; font-size: 0.9rem; justify-content: center; text-transform: none;">
+    ⚠️ {{ actionError }}
+  </div>
+
+  <!-- Active Registrations Section -->
+  <div class="glass-panel" style="padding: 24px; border-radius: 18px; margin-bottom: 24px;">
+    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px;">Active Registrations & Waitlist Queue</h3>
+
+    <div *ngIf="isLoading" style="text-align: center; padding: 20px; color: var(--text-muted);">
+      Loading your registrations...
+    </div>
+
+    <div *ngIf="!isLoading && activeEvents.length === 0" style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.95rem;">
+      You currently have no active event registrations or waitlist entries.
+    </div>
+
+    <div *ngIf="!isLoading && activeEvents.length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Event Title</th>
+            <th>Venue</th>
+            <th>Event Date & Time</th>
+            <th>Item Type</th>
+            <th>Status</th>
+            <th>Attendance</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of activeEvents">
+            <td style="font-weight: 600;">{{ item.title }}</td>
+            <td>{{ item.venue }}</td>
+            <td>{{ item.startAtUtc | date:'medium' }}</td>
+            <td>
+              <span class="badge" [class]="item.itemType === 'Registration' ? 'badge-role' : 'badge-waiting'">
+                {{ item.itemType }}
+              </span>
+            </td>
+            <td>
+              <span class="badge" [class]="item.status === 'Confirmed' ? 'badge-confirmed' : 'badge-waiting'">
+                {{ item.status === 'Waitlisted' || item.itemType === 'Waitlist' ? ('⏳ Waitlist Position #' + (item.waitlistPosition || '1')) : item.status }}
+              </span>
+            </td>
+            <td>
+              <span *ngIf="item.attendanceStatus" class="badge badge-attended">
+                {{ item.attendanceStatus }}
+              </span>
+              <span *ngIf="!item.attendanceStatus" style="color: var(--text-dim); font-size: 0.8rem;">
+                Not recorded
+              </span>
+            </td>
+            <td>
+              <button *ngIf="item.registrationId" (click)="cancelRegistration(item.registrationId)" class="btn btn-rose btn-sm">
+                Cancel Registration
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Past Events Section -->
+  <div class="glass-panel" style="padding: 24px; border-radius: 18px;">
+    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px;">Past Event Participation History</h3>
+
+    <div *ngIf="!isLoading && pastEvents.length === 0" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem;">
+      No past completed events found.
+    </div>
+
+    <div *ngIf="!isLoading && pastEvents.length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Event Title</th>
+            <th>Venue</th>
+            <th>Completed Date</th>
+            <th>Status</th>
+            <th>Attendance Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of pastEvents">
+            <td style="font-weight: 600;">{{ item.title }}</td>
+            <td>{{ item.venue }}</td>
+            <td>{{ item.startAtUtc | date:'mediumDate' }}</td>
+            <td><span class="badge badge-closed">{{ item.status }}</span></td>
+            <td>
+              <span class="badge" [class]="item.attendanceStatus === 'Attended' ? 'badge-attended' : 'badge-closed'">
+                {{ item.attendanceStatus || 'Did Not Attend' }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

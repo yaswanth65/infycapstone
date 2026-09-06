@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="EventManagementServiceDAL/EventManagementServiceDAL.csproj" />
+  <Project Path="EventManagementSystemServiceLayer/EventManagementSystemServiceLayer.csproj" />
+</Solution>

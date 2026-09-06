@@ -1,0 +1,102 @@
+<div class="app-layout">
+  <!-- Top Navigation Bar -->
+  <nav class="navbar glass-panel" style="margin: 16px; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; border-radius: 16px;">
+    
+    <!-- Branding -->
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <a routerLink="/" style="text-decoration: none; display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.5rem; font-weight: 800; font-family: var(--font-heading); background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+          EventHub
+        </span>
+      </a>
+      <span *ngIf="authService.isAuthenticated()" class="badge badge-role">
+        {{ authService.getRole() }}
+      </span>
+    </div>
+
+    <!-- Navigation Links based on Role -->
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <a routerLink="/events" class="btn btn-secondary btn-sm" style="border: none;">
+        🌐 Browse Events
+      </a>
+
+      <!-- Role-Specific Portal Button -->
+      <ng-container *ngIf="authService.isAuthenticated()">
+        <a *ngIf="authService.getRole() === 'Attendee'" routerLink="/attendee" class="btn btn-primary btn-sm">
+          🙋 Attendee Dashboard
+        </a>
+        <a *ngIf="authService.getRole() === 'EventManager'" routerLink="/manager" class="btn btn-primary btn-sm">
+          📅 Manager Portal
+        </a>
+        <a *ngIf="authService.getRole() === 'BusinessManagement'" routerLink="/business" class="btn btn-primary btn-sm">
+          💼 Executive Dashboard
+        </a>
+        <a *ngIf="authService.getRole() === 'Administrator'" routerLink="/admin" class="btn btn-primary btn-sm">
+          ⚙️ Admin Console
+        </a>
+      </ng-container>
+    </div>
+
+    <!-- User Profile & Notifications -->
+    <div style="display: flex; align-items: center; gap: 16px; position: relative;">
+      
+      <ng-container *ngIf="authService.isAuthenticated(); else loginBtn">
+        <!-- Notification Bell Dropdown -->
+        <button (click)="toggleNotifications()" class="btn btn-secondary btn-sm" style="position: relative; border-radius: 50%; width: 40px; height: 40px; padding: 0;">
+          🔔
+          <span *ngIf="unreadCount > 0" style="position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; border-radius: 10px; font-size: 0.7rem; font-weight: 800; padding: 2px 6px;">
+            {{ unreadCount }}
+          </span>
+        </button>
+
+        <!-- Notification Dropdown Menu -->
+        <div *ngIf="showNotificationsMenu" class="notifications-menu">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">Notifications</h4>
+            <button (click)="markAllRead()" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">Mark all read</button>
+          </div>
+          
+          <div class="notifications-scroll">
+            <div *ngIf="notifications.length === 0" style="color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 20px 0;">
+              No notifications available.
+            </div>
+
+            <div *ngFor="let n of notifications" style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.85rem; color: #f8fafc;">{{ n.title }}</strong>
+                <span *ngIf="!n.readAtUtc" class="badge badge-draft" style="font-size: 0.65rem;">New</span>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); font-weight: 400; line-height: 1.4;">
+                {{ getFormattedNotificationMessage(n.message) }}
+              </p>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                <span style="font-size: 0.7rem; color: var(--text-dim);">{{ n.createdAtUtc | date:'short' }}</span>
+                <button *ngIf="!n.readAtUtc" (click)="markRead(n.notificationId)" class="btn btn-secondary btn-sm" style="font-size: 0.7rem; padding: 2px 6px;">Mark Read</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Name & Logout -->
+        <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">
+          {{ authService.getUserDisplayName() }}
+        </span>
+        <button (click)="logout()" class="btn btn-rose btn-sm">
+          Logout
+        </button>
+      </ng-container>
+
+      <ng-template #loginBtn>
+        <a routerLink="/login" class="btn btn-primary btn-sm">
+          Sign In
+        </a>
+      </ng-template>
+
+    </div>
+  </nav>
+
+  <!-- Router Outlet Container -->
+  <main style="max-width: 1280px; margin: 0 auto; padding: 0 16px 40px 16px;">
+    <router-outlet></router-outlet>
+  </main>
+</div>

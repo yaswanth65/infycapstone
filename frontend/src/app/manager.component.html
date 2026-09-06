@@ -1,0 +1,488 @@
+<div>
+  <!-- Title Header -->
+  <div style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <h1 style="font-size: 2rem; font-weight: 800;">📅 Event Manager Portal</h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">Plan, update, publish, monitor enrollment, and manage event attendance.</p>
+    </div>
+    <button (click)="openCreateForm()" class="btn btn-primary">
+      ➕ Create New Event
+    </button>
+  </div>
+
+  <!-- Action Feedback -->
+  <div *ngIf="message" class="badge badge-attended" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; font-size: 0.9rem; justify-content: center; text-transform: none;">
+    ✅ {{ message }}
+  </div>
+  <div *ngIf="errorMessage" class="badge badge-closed" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; font-size: 0.9rem; justify-content: center; text-transform: none;">
+    ⚠️ {{ errorMessage }}
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="tabs-header">
+    <button (click)="setTab('events')" class="tab-btn" [class.active]="activeTab === 'events'">
+      📋 Managed Events ({{ events.length }})
+    </button>
+    <button (click)="setTab('create')" class="tab-btn" [class.active]="activeTab === 'create'">
+      ✏️ {{ isEditing ? 'Edit Event' : 'Create Event' }}
+    </button>
+    <button (click)="setTab('roster')" class="tab-btn" [class.active]="activeTab === 'roster'">
+      👥 Registrations & Waitlist
+    </button>
+    <button (click)="setTab('requests')" class="tab-btn" [class.active]="activeTab === 'requests'">
+      📩 Registration Requests ({{ requests.length }})
+    </button>
+    <button (click)="setTab('attendance')" class="tab-btn" [class.active]="activeTab === 'attendance'">
+      ⏱️ Attendance Tracking & Audit
+    </button>
+  </div>
+
+  <!-- TAB 1: MANAGED EVENTS LIST -->
+  <div *ngIf="activeTab === 'events'">
+    <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
+      <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Filter Status:</label>
+      <select [(ngModel)]="statusFilter" (change)="loadEvents()" class="select-field" style="width: 180px;">
+        <option value="">All Statuses</option>
+        <option value="Draft">Draft</option>
+        <option value="Published">Published</option>
+        <option value="Closed">Closed</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <div *ngIf="isLoadingEvents" style="text-align: center; padding: 40px; color: var(--text-muted);">
+      Loading organizer events...
+    </div>
+
+    <div *ngIf="!isLoadingEvents && events.length === 0" class="glass-panel" style="text-align: center; padding: 40px; border-radius: 16px;">
+      <p style="color: var(--text-muted);">No events found under your account. Click "Create New Event" to get started.</p>
+    </div>
+
+    <div *ngIf="!isLoadingEvents && events.length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Event Title & ID</th>
+            <th>Venue</th>
+            <th>Start Date</th>
+            <th>Capacity</th>
+            <th>Confirmed / Waitlist</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let ev of events">
+            <td>
+              <div style="font-weight: 700; color: var(--text-main);">{{ ev.title }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">ID: {{ ev.eventId }}</div>
+            </td>
+            <td>{{ ev.venue }}</td>
+            <td>{{ ev.startAtUtc | date:'short' }}</td>
+            <td>{{ ev.capacity }}</td>
+            <td>
+              <span class="badge badge-confirmed">{{ ev.confirmedRegistrations }} Confirmed</span>
+              <span *ngIf="ev.waitlistCount > 0" class="badge badge-waiting" style="margin-left: 4px;">{{ ev.waitlistCount }} Waiting</span>
+            </td>
+            <td>
+              <span class="badge" [class.badge-draft]="ev.status === 'Draft'" [class.badge-published]="ev.status === 'Published'" [class.badge-closed]="ev.status === 'Closed' || ev.status === 'Cancelled'">
+                {{ ev.status }}
+              </span>
+            </td>
+            <td>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button *ngIf="ev.status === 'Draft'" (click)="openEditForm(ev)" class="btn btn-secondary btn-sm">Edit</button>
+                <button *ngIf="ev.status === 'Draft'" (click)="publish(ev.eventId)" class="btn btn-emerald btn-sm">Publish</button>
+                <button *ngIf="ev.status === 'Published'" (click)="close(ev.eventId)" class="btn btn-secondary btn-sm">Close</button>
+                <button *ngIf="ev.status === 'Published' || ev.status === 'Draft'" (click)="cancel(ev.eventId)" class="btn btn-rose btn-sm">Cancel</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: CREATE / EDIT FORM -->
+  <div *ngIf="activeTab === 'create'" class="glass-panel" style="padding: 28px; border-radius: 20px; max-width: 700px;">
+    <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 20px;">
+      {{ isEditing ? 'Edit Event #' + editingEventId : 'Create New Event' }}
+    </h3>
+
+    <form (ngSubmit)="saveEvent()">
+      <div class="form-group">
+        <label for="eventTitle">Event Title *</label>
+        <input type="text" id="eventTitle" [(ngModel)]="formModel.title" name="title" class="input-field" placeholder="e.g. AI & Cloud Architecture Summit 2026" required>
+      </div>
+
+      <div class="form-group">
+        <label for="eventVenue">Venue / Location *</label>
+        <input type="text" id="eventVenue" [(ngModel)]="formModel.venue" name="venue" class="input-field" placeholder="e.g. Auditorium A or Online Teams" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label for="startAtUtc">Start Date & Time (UTC) *</label>
+          <input type="datetime-local" id="startAtUtc" [(ngModel)]="formModel.startAtUtc" name="startAtUtc" class="input-field" required>
+        </div>
+        <div class="form-group">
+          <label for="endAtUtc">End Date & Time (UTC) *</label>
+          <input type="datetime-local" id="endAtUtc" [(ngModel)]="formModel.endAtUtc" name="endAtUtc" class="input-field" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="eventCapacity">Event Capacity (Seats) *</label>
+        <input type="number" id="eventCapacity" [(ngModel)]="formModel.capacity" name="capacity" class="input-field" min="1" required>
+      </div>
+
+      <div class="form-group">
+        <label for="eventDesc">Description</label>
+        <textarea id="eventDesc" [(ngModel)]="formModel.description" name="description" class="textarea-field" placeholder="Provide full agenda, speakers, and topics..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" (click)="setTab('events')" class="btn btn-secondary">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+          {{ isEditing ? 'Save Changes' : 'Create Draft Event' }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- TAB 3: EVENT ROSTER (REGISTRATIONS & WAITLIST) -->
+  <div *ngIf="activeTab === 'roster'">
+    <div class="glass-panel" style="padding: 20px; border-radius: 16px; margin-bottom: 24px;">
+      <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 12px;">View Who Registered</h4>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
+        Self-service and on-behalf registrations are stored as confirmed registrations. Select an event below to view attendees.
+      </p>
+      <div style="display: flex; gap: 12px; align-items: flex-end;">
+        <div class="form-group" style="margin:0; width: 320px;">
+          <label>Select Event</label>
+          <select [(ngModel)]="rosterEventId" (change)="loadRoster()" class="select-field">
+            <option *ngFor="let ev of events" [value]="ev.eventId">{{ ev.title }}</option>
+          </select>
+        </div>
+        <button (click)="loadRoster()" class="btn btn-primary">View Registrations</button>
+      </div>
+    </div>
+
+    <div *ngIf="isLoadingRoster" style="text-align: center; padding: 40px; color: var(--text-muted);">
+      Loading roster...
+    </div>
+
+    <div *ngIf="!isLoadingRoster && roster">
+      <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+        <h3 style="font-size: 1.2rem; font-weight: 800;">{{ roster.eventTitle }} <span style="font-size: 0.85rem; color: var(--text-dim); font-weight: 500;">(#{{ roster.eventId }})</span></h3>
+        <span class="badge badge-confirmed">{{ roster.confirmedCount }} / {{ roster.capacity }} Confirmed</span>
+        <span *ngIf="roster.waitlist.length > 0" class="badge badge-waiting">{{ roster.waitlist.length }} on Waitlist</span>
+      </div>
+
+      <div class="table-container" style="margin-bottom: 24px;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Registration ID</th>
+              <th>Attendee</th>
+              <th>Source</th>
+              <th>Registered On</th>
+              <th>Attendance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let reg of roster.registrations">
+              <td>Reg #{{ reg.registrationId }}</td>
+              <td>
+                <div style="font-weight: 700; color: var(--text-main);">{{ reg.attendeeDisplayName }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">{{ reg.attendeeEmail }} · User #{{ reg.attendeeUserId }}</div>
+              </td>
+              <td>
+                <span class="badge" [class.badge-published]="reg.source === 'Self'" [class.badge-waiting]="reg.source === 'OnBehalf'" [class.badge-secondary]="reg.source !== 'Self' && reg.source !== 'OnBehalf'">
+                  {{ reg.source || 'Self' }}
+                </span>
+              </td>
+              <td>{{ reg.registeredAtUtc | date:'short' }}</td>
+              <td>
+                <span *ngIf="reg.attendanceStatus" class="badge badge-attended" [class.badge-closed]="reg.attendanceStatus === 'Absent' || reg.attendanceStatus === 'No-show'">
+                  {{ reg.attendanceStatus }}{{ reg.attendanceFinalized ? ' · Finalized' : '' }}
+                </span>
+                <span *ngIf="!reg.attendanceStatus" style="color: var(--text-dim); font-size: 0.85rem;">Not recorded</span>
+              </td>
+            </tr>
+            <tr *ngIf="roster.registrations.length === 0">
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No confirmed registrations yet for this event.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-container" *ngIf="roster.waitlist.length > 0">
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 10px;">Active Waitlist</h4>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Position</th>
+              <th>Attendee</th>
+              <th>Queued On</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of roster.waitlist">
+              <td><span class="badge badge-waiting">#{{ item.position }}</span></td>
+              <td>
+                <div style="font-weight: 700; color: var(--text-main);">{{ item.attendeeDisplayName }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">{{ item.attendeeEmail }} · User #{{ item.attendeeUserId }}</div>
+              </td>
+              <td>{{ item.queuedAtUtc | date:'short' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: REGISTRATION REQUESTS -->
+  <div *ngIf="activeTab === 'requests'">
+    <!-- Purpose Explanation Card -->
+    <div class="glass-panel" style="padding: 20px; border-radius: 16px; margin-bottom: 24px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.3);">
+      <h4 style="font-size: 1rem; font-weight: 700; color: #818cf8; margin-bottom: 6px;">💡 Understanding Registration Requests</h4>
+      <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+        As an <strong>Event Manager</strong>, you can submit registration requests on behalf of internal attendees or team members (e.g. VIP guests, executives, or staff members who cannot self-register). 
+        This tab allows you to create new on-behalf requests and monitor their approval status (Pending, Accepted, or Rejected).
+      </p>
+    </div>
+
+    <!-- Create Request Panel -->
+    <div class="glass-panel" style="padding: 20px; border-radius: 16px; margin-bottom: 24px;">
+      <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 12px;">Submit On-Behalf Registration Request</h4>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+        <div class="form-group" style="margin:0; flex:1; min-width:200px;">
+          <label>Select Event</label>
+          <select [(ngModel)]="onBehalfEventId" class="select-field">
+            <option *ngFor="let ev of events" [value]="ev.eventId">{{ ev.title }}</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0; flex:1; min-width:160px;">
+          <label>Attendee User ID</label>
+          <input type="number" [(ngModel)]="onBehalfAttendeeUserId" class="input-field" placeholder="e.g. 4">
+        </div>
+        <button (click)="submitOnBehalfRequest()" class="btn btn-emerald">Submit Request</button>
+      </div>
+    </div>
+
+    <!-- Filter By Event -->
+    <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-end;">
+      <div class="form-group" style="margin:0; width: 260px;">
+        <label>Filter by Event</label>
+        <select [(ngModel)]="requestFilterEventId" (change)="loadRequests()" class="select-field">
+          <option [ngValue]="0">All Events</option>
+          <option *ngFor="let ev of events" [value]="ev.eventId">{{ ev.title }}</option>
+        </select>
+      </div>
+      <button (click)="loadRequests()" class="btn btn-secondary">Apply Filter</button>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Request ID</th>
+            <th>Event</th>
+            <th>Attendee Name</th>
+            <th>Request Status</th>
+            <th>Requested Date</th>
+            <th>Response Comment</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let req of requests">
+            <td>#{{ req.registrationRequestId }}</td>
+            <td>Event #{{ req.eventId }}</td>
+            <td style="font-weight: 600;">{{ req.attendeeDisplayName || ('User #' + req.attendeeUserId) }}</td>
+            <td>
+              <span class="badge" [class.badge-waiting]="req.requestStatus === 'Pending'" [class.badge-confirmed]="req.requestStatus === 'Accepted'" [class.badge-closed]="req.requestStatus === 'Rejected'">
+                {{ req.requestStatus }}
+              </span>
+            </td>
+            <td>{{ req.requestedAtUtc | date:'short' }}</td>
+            <td>{{ req.responseComment || '-' }}</td>
+            <td>
+              <div *ngIf="req.requestStatus === 'Pending'" style="display: flex; gap: 6px;">
+                <button (click)="decideRequest(req.registrationRequestId, 'Accepted')" class="btn btn-emerald btn-sm">Accept</button>
+                <button (click)="decideRequest(req.registrationRequestId, 'Rejected')" class="btn btn-rose btn-sm">Reject</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 5: ATTENDANCE TRACKING & AUDIT REDESIGN -->
+  <div *ngIf="activeTab === 'attendance'">
+    <!-- Step 1: Select Event Control -->
+    <div class="glass-panel" style="padding: 20px; border-radius: 16px; margin-bottom: 20px;">
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between;">
+        <div style="flex: 1; min-width: 280px;">
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">
+            Select Event for Attendance Roll Call
+          </label>
+          <select [(ngModel)]="selectedAttendanceEventId" (change)="onAttendanceEventSelect()" class="select-field" style="font-size: 1rem; font-weight: 600;">
+            <option [ngValue]="0" disabled>-- Choose an Event --</option>
+            <option *ngFor="let ev of events" [value]="ev.eventId">
+              {{ ev.title }} ({{ ev.startAtUtc | date:'shortDate' }}) — Status: {{ ev.status }}
+            </option>
+          </select>
+        </div>
+
+        <button (click)="onAttendanceEventSelect()" class="btn btn-secondary" style="margin-top: 22px;">
+          🔄 Refresh Roll Call
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoadingAttendance" style="text-align: center; padding: 40px; color: var(--text-muted);">
+      Loading event roster and attendance records...
+    </div>
+
+    <!-- Event Selected View -->
+    <div *ngIf="!isLoadingAttendance && attendanceRoster">
+      
+      <!-- Step 2: Summary KPI Cards -->
+      <div class="metrics-grid" style="margin-bottom: 24px;">
+        <div class="metric-card glass-panel">
+          <span class="label">Total Registered</span>
+          <span class="value" style="color: #f8fafc;">{{ totalRegisteredCount }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">Capacity: {{ attendanceRoster.capacity }}</span>
+        </div>
+
+        <div class="metric-card glass-panel">
+          <span class="label">Attended</span>
+          <span class="value" style="color: #34d399;">{{ attendedCount }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">Confirmed present</span>
+        </div>
+
+        <div class="metric-card glass-panel">
+          <span class="label">Absent</span>
+          <span class="value" style="color: #f87171;">{{ absentCount }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">No-shows & absent</span>
+        </div>
+
+        <div class="metric-card glass-panel">
+          <span class="label">Pending Roll Call</span>
+          <span class="value" style="color: #fbbf24;">{{ pendingCount }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">Awaiting attendance</span>
+        </div>
+      </div>
+
+      <!-- Step 3: View Attendees & Mark Attendance Table -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Attendee Details</th>
+              <th>Registration Source</th>
+              <th>Current Status</th>
+              <th>Audit Revision</th>
+              <th>Attendance Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let reg of attendanceRoster.registrations">
+              <tr>
+                <td>
+                  <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">{{ reg.attendeeDisplayName }}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-dim);">{{ reg.attendeeEmail }} · Reg #{{ reg.registrationId }}</div>
+                </td>
+                <td>
+                  <span class="badge" [class.badge-published]="reg.source === 'Self'" [class.badge-waiting]="reg.source === 'OnBehalf'">
+                    {{ reg.source || 'Self' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge" 
+                        [class.badge-attended]="getAttendeeStatus(reg) === 'Attended' || getAttendeeStatus(reg) === 'Present'"
+                        [class.badge-closed]="getAttendeeStatus(reg) === 'Absent' || getAttendeeStatus(reg) === 'No-show'"
+                        [class.badge-pending]="getAttendeeStatus(reg) === 'Not Recorded' || getAttendeeStatus(reg) === 'Pending'">
+                    {{ getAttendeeStatus(reg) }}
+                  </span>
+                </td>
+                <td>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">
+                    {{ getAttendanceRecordForReg(reg.registrationId)?.revisionNo ? ('v' + getAttendanceRecordForReg(reg.registrationId)?.revisionNo) : 'v1' }}
+                  </span>
+                  <div *ngIf="getAttendanceRecordForReg(reg.registrationId)?.correctionReason" style="font-size: 0.7rem; color: #fbbf24;" [title]="getAttendanceRecordForReg(reg.registrationId)?.correctionReason">
+                    📝 Corrected
+                  </div>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <!-- Direct Mark Buttons -->
+                    <button (click)="quickMarkAttendance(reg.registrationId, 'Attended')" class="btn btn-emerald btn-sm">
+                      ✓ Mark Attended
+                    </button>
+                    <button (click)="quickMarkAttendance(reg.registrationId, 'Absent')" class="btn btn-rose btn-sm">
+                      ✕ Mark Absent
+                    </button>
+                    
+                    <!-- Secondary Correction Action -->
+                    <button (click)="openCorrection(reg.registrationId, getAttendeeStatus(reg))" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">
+                      ✏️ Correct Record
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Secondary Action: Inline Audit Correction Panel -->
+              <tr *ngIf="correctingRegistrationId === reg.registrationId">
+                <td colspan="5" style="background: rgba(15, 23, 42, 0.95); padding: 16px; border-bottom: 2px solid var(--primary);">
+                  <div style="max-width: 650px; margin: 0 auto; background: rgba(30, 41, 59, 0.7); padding: 16px; border-radius: 12px; border: 1px solid var(--border-glow);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                      <h4 style="font-size: 0.95rem; font-weight: 700; color: #fbbf24;">
+                        🛡️ Attendance Audit Correction — {{ reg.attendeeDisplayName }}
+                      </h4>
+                      <button (click)="cancelCorrection()" class="btn btn-secondary btn-sm" style="padding: 2px 8px;">✕ Cancel</button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-bottom: 12px;">
+                      <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">New Status</label>
+                        <select [(ngModel)]="correctionStatus" class="select-field" style="padding: 8px; font-size: 0.85rem;">
+                          <option value="Attended">Attended</option>
+                          <option value="Present">Present</option>
+                          <option value="Absent">Absent</option>
+                          <option value="No-show">No-show</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Audit Correction Reason *</label>
+                        <input type="text" [(ngModel)]="correctionReason" class="input-field" placeholder="e.g. Arrived late due to travel delay..." style="padding: 8px; font-size: 0.85rem;">
+                      </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                      <button (click)="cancelCorrection()" class="btn btn-secondary btn-sm">Cancel</button>
+                      <button (click)="submitCorrection(reg.registrationId)" class="btn btn-primary btn-sm">
+                        Submit Audit Correction
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+
+            <tr *ngIf="attendanceRoster.registrations.length === 0">
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                No registered attendees found for this event yet.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
