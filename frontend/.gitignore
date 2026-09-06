@@ -1,0 +1,32 @@
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# Dependencies
+/node_modules
+
+# IDEs and editors
+/.idea
+/.project
+/.classpath
+/.cproject
+/.settings
+/.vscode/*
+!/.vscode/tasks.json
+!/.vscode/launch.json
+!/.vscode/extensions.json
+*.sublime-workspace
+
+# Angular CLI
+/.angular/cache
+/.angular
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Miscellaneous
+/coverage
+/.nx/cache
