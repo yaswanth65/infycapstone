@@ -64,5 +64,18 @@ namespace EventManagementSystemServiceLayer.Controllers
             var result = await _service.GetEventCompletionReportsAsync(startDate, endDate, pageNumber, pageSize, ct);
             return Ok(new ApiResponse<PaginatedResponse<EventSummaryDto>>(true, 200, "Event completion reports retrieved successfully.", result));
         }
+
+        [HttpGet("analytics")]
+        [ProducesResponseType(typeof(ApiResponse<Services.Brownfield.AdvancedAnalyticsDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAdvancedAnalytics(
+            [FromServices] Services.Brownfield.IAdvancedAnalyticsService analyticsService,
+            [FromQuery] DateTime? fromUtc = null,
+            [FromQuery] DateTime? toUtc = null,
+            CancellationToken ct = default)
+        {
+            var result = await analyticsService.GetSystemAnalyticsAsync(fromUtc, toUtc, ct);
+            return Ok(new ApiResponse<Services.Brownfield.AdvancedAnalyticsDto>(true, 200, "Advanced analytics retrieved successfully.", result));
+        }
     }
 }
+

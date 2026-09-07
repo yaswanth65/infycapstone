@@ -24,6 +24,16 @@ public partial class EventManagementDbContext : DbContext
    public virtual DbSet<User> Users { get; set; }
    public virtual DbSet<WaitlistEntry> WaitlistEntries { get; set; }
 
+   // Brownfield DbSets
+   public virtual DbSet<EventCategory> EventCategories { get; set; }
+   public virtual DbSet<Venue> Venues { get; set; }
+   public virtual DbSet<EventSeries> EventSeries { get; set; }
+   public virtual DbSet<EventCategoryMapping> EventCategoryMappings { get; set; }
+   public virtual DbSet<EventApprovalRequest> EventApprovalRequests { get; set; }
+   public virtual DbSet<EventCapacityAlertConfig> EventCapacityAlertConfigs { get; set; }
+   public virtual DbSet<EventFeedback> EventFeedbacks { get; set; }
+   public virtual DbSet<AttendeeInterest> AttendeeInterests { get; set; }
+
    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
    {
        if (!optionsBuilder.IsConfigured)
@@ -110,9 +120,22 @@ public partial class EventManagementDbContext : DbContext
            entity.Property(e => e.UpdatedAtUtc).HasPrecision(0);
            entity.Property(e => e.Venue).HasMaxLength(250);
 
+           entity.Property(e => e.ApprovalStatus)
+               .HasMaxLength(20)
+               .IsUnicode(false)
+               .HasDefaultValue("Approved");
+           entity.Property(e => e.RejectionReason).HasMaxLength(1000);
+           entity.Property(e => e.VirtualMeetingUrl).HasMaxLength(1000);
+
            entity.HasOne(d => d.OrganizerUser).WithMany(p => p.Events)
                .HasForeignKey(d => d.OrganizerUserId)
                .OnDelete(DeleteBehavior.ClientSetNull);
+           entity.HasOne(d => d.VenueNavigation).WithMany(p => p.Events)
+               .HasForeignKey(d => d.VenueId)
+               .OnDelete(DeleteBehavior.SetNull);
+           entity.HasOne(d => d.SeriesNavigation).WithMany(p => p.Events)
+               .HasForeignKey(d => d.SeriesId)
+               .OnDelete(DeleteBehavior.SetNull);
        });
 
        modelBuilder.Entity<EventStatusHistory>(entity =>
@@ -302,6 +325,99 @@ public partial class EventManagementDbContext : DbContext
                .HasForeignKey(d => d.EventId)
                .OnDelete(DeleteBehavior.ClientSetNull);
            entity.HasOne(d => d.PromotedToRegistration).WithMany(p => p.WaitlistEntries).HasForeignKey(d => d.PromotedToRegistrationId);
+       });
+
+       // ------------------------------------------------------------
+       // Brownfield Model Mappings
+       // ------------------------------------------------------------
+       modelBuilder.Entity<EventCategory>(entity =>
+       {
+           entity.HasKey(e => e.CategoryId);
+           entity.HasIndex(e => e.CategoryName).IsUnique();
+           entity.Property(e => e.CategoryName).HasMaxLength(100);
+           entity.Property(e => e.Description).HasMaxLength(500);
+           entity.Property(e => e.CreatedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+           entity.HasOne(e => e.CreatedByUser).WithMany(u => u.CreatedEventCategories)
+               .HasForeignKey(e => e.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+       });
+
+       modelBuilder.Entity<Venue>(entity =>
+       {
+           entity.HasKey(e => e.VenueId);
+           entity.HasIndex(e => e.Name).IsUnique();
+           entity.Property(e => e.Name).HasMaxLength(200);
+           entity.Property(e => e.Address).HasMaxLength(500);
+           entity.Property(e => e.ContactDetails).HasMaxLength(200);
+           entity.Property(e => e.CreatedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+       });
+
+       modelBuilder.Entity<EventSeries>(entity =>
+       {
+           entity.HasKey(e => e.SeriesId);
+           entity.Property(e => e.RecurrencePattern).HasMaxLength(50);
+           entity.Property(e => e.RecurrenceEndDateUtc).HasPrecision(0);
+           entity.Property(e => e.CreatedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+           entity.HasOne(e => e.OrganizerUser).WithMany(u => u.EventSeriesList)
+               .HasForeignKey(e => e.OrganizerUserId).OnDelete(DeleteBehavior.ClientSetNull);
+       });
+
+       modelBuilder.Entity<EventCategoryMapping>(entity =>
+       {
+           entity.HasKey(e => new { e.EventId, e.CategoryId });
+           entity.Property(e => e.AssignedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+           entity.HasOne(e => e.Event).WithMany(ev => ev.EventCategoryMappings)
+               .HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Cascade);
+           entity.HasOne(e => e.Category).WithMany(c => c.EventCategoryMappings)
+               .HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.Cascade);
+       });
+
+       modelBuilder.Entity<EventApprovalRequest>(entity =>
+       {
+           entity.HasKey(e => e.ApprovalRequestId);
+           entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Pending");
+           entity.Property(e => e.Remarks).HasMaxLength(1000);
+           entity.Property(e => e.RequestedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+           entity.Property(e => e.ReviewedAtUtc).HasPrecision(0);
+           entity.HasOne(e => e.Event).WithMany(ev => ev.EventApprovalRequests)
+               .HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Cascade);
+           entity.HasOne(e => e.RequestedByUser).WithMany(u => u.EventApprovalRequestsRequested)
+               .HasForeignKey(e => e.RequestedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+           entity.HasOne(e => e.ReviewedByUser).WithMany(u => u.EventApprovalRequestsReviewed)
+               .HasForeignKey(e => e.ReviewedByUserId).OnDelete(DeleteBehavior.ClientSetNull);
+       });
+
+       modelBuilder.Entity<EventCapacityAlertConfig>(entity =>
+       {
+           entity.HasKey(e => e.AlertConfigId);
+           entity.HasIndex(e => new { e.EventId, e.ThresholdPercentage }).IsUnique();
+           entity.Property(e => e.CreatedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+           entity.Property(e => e.TriggeredAtUtc).HasPrecision(0);
+           entity.HasOne(e => e.Event).WithMany(ev => ev.EventCapacityAlertConfigs)
+               .HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Cascade);
+       });
+
+       modelBuilder.Entity<EventFeedback>(entity =>
+       {
+           entity.HasKey(e => e.FeedbackId);
+           entity.HasIndex(e => new { e.EventId, e.AttendeeUserId }).IsUnique();
+           entity.Property(e => e.Comments).HasMaxLength(1000);
+           entity.Property(e => e.CreatedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+           entity.HasOne(e => e.Event).WithMany(ev => ev.EventFeedbacks)
+               .HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Cascade);
+           entity.HasOne(e => e.AttendeeUser).WithMany(u => u.EventFeedbacks)
+               .HasForeignKey(e => e.AttendeeUserId).OnDelete(DeleteBehavior.ClientSetNull);
+       });
+
+       modelBuilder.Entity<AttendeeInterest>(entity =>
+       {
+           entity.HasKey(e => e.InterestId);
+           entity.HasIndex(e => new { e.UserId, e.CategoryId }).IsUnique();
+           entity.Property(e => e.Weight).HasPrecision(3, 2).HasDefaultValue(1.0m);
+           entity.Property(e => e.UpdatedAtUtc).HasPrecision(0).HasDefaultValueSql("(sysutcdatetime())");
+           entity.HasOne(e => e.User).WithMany(u => u.AttendeeInterests)
+               .HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+           entity.HasOne(e => e.Category).WithMany(c => c.AttendeeInterests)
+               .HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.Cascade);
        });
 
        OnModelCreatingPartial(modelBuilder);

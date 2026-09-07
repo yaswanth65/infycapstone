@@ -356,10 +356,24 @@ return await _db.Registrations
                              && w.WaitlistStatus == WaitingStatus
                              && w.QueuedAtUtc <= entry.QueuedAtUtc, cancellationToken);
        }
-       catch (Exception ex)
-       {
-           _logger.LogError(ex, "Failed to compute waitlist position for entry {WaitlistEntryId}.", waitlistEntryId);
-           throw;
-       }
-   }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to compute waitlist position for entry {WaitlistEntryId}.", waitlistEntryId);
+            throw;
+        }
+    }
+
+    public async Task<Registration?> GetByEventAndAttendeeAsync(long eventId, long attendeeUserId, CancellationToken cancellationToken = default)
+    {
+        return await _db.Registrations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.EventId == eventId && r.AttendeeUserId == attendeeUserId, cancellationToken);
+    }
+
+    public async Task<int> CountConfirmedByEventAsync(long eventId, CancellationToken cancellationToken = default)
+    {
+        return await _db.Registrations
+            .AsNoTracking()
+            .CountAsync(r => r.EventId == eventId && r.RegistrationStatus == ConfirmedStatus, cancellationToken);
+    }
 }

@@ -15,15 +15,21 @@ namespace EventManagementSystemServiceLayer.Controllers
        private readonly IEventManagementService _eventManagement;
        private readonly IAttendanceService _attendance;
        private readonly IRegistrationRequestService _registrationRequests;
+       private readonly Services.Brownfield.IRecurringEventService _recurringEventService;
+       private readonly Services.Brownfield.ICapacityAlertService _capacityAlertService;
 
        public EventManagerController(
            IEventManagementService eventManagement,
            IAttendanceService attendance,
-           IRegistrationRequestService registrationRequests)
+           IRegistrationRequestService registrationRequests,
+           Services.Brownfield.IRecurringEventService recurringEventService,
+           Services.Brownfield.ICapacityAlertService capacityAlertService)
        {
            _eventManagement = eventManagement;
            _attendance = attendance;
            _registrationRequests = registrationRequests;
+           _recurringEventService = recurringEventService;
+           _capacityAlertService = capacityAlertService;
        }
 
        [HttpPost("events")]
@@ -216,6 +222,37 @@ namespace EventManagementSystemServiceLayer.Controllers
            return Ok(new ApiResponse<PaginatedResponse<RegistrationRequestResponseDto>>(true, 200, "Registration requests retrieved.", result));
        }
 
+        [HttpPost("events/recurring")]
+        public async Task<IActionResult> CreateRecurringEvent([FromBody] DTOs.Brownfield.RecurringEventCreateDto dto, CancellationToken ct)
+        {
+            try
+            {
+                var result = await _recurringEventService.CreateRecurringSeriesAsync(GetCurrentUserId(), dto, ct);
+                return Ok(new ApiResponse<DTOs.Brownfield.RecurringEventSeriesDto>(true, 201, "Recurring event series created.", result));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object>(false, 400, ex.Message));
+            }
+        }
+
+        [HttpPost("events/{eventId:long}/capacity-alerts")]
+        public async Task<IActionResult> ConfigureCapacityAlert(long eventId, [FromBody] DTOs.Brownfield.CapacityAlertConfigDto dto, CancellationToken ct)
+        {
+            if (eventId != dto.EventId)
+                return BadRequest(new ApiResponse<object>(false, 400, "Event ID mismatch."));
+
+            var result = await _capacityAlertService.SetThresholdAsync(dto, ct);
+            return Ok(new ApiResponse<DTOs.Brownfield.CapacityAlertResponseDto>(true, 200, "Capacity alert threshold configured.", result));
+        }
+
+        [HttpGet("events/{eventId:long}/capacity-alerts")]
+        public async Task<IActionResult> GetCapacityAlerts(long eventId, CancellationToken ct)
+        {
+            var list = await _capacityAlertService.GetThresholdsAsync(eventId, ct);
+            return Ok(new ApiResponse<IReadOnlyList<DTOs.Brownfield.CapacityAlertResponseDto>>(true, 200, "Capacity alert thresholds retrieved.", list));
+        }
+
        private async Task<IActionResult> Transition(long eventId, string? remarks, Func<long, string?, Task<EventResponseDto?>> action, string verb)
        {
            try
@@ -249,3 +286,4 @@ namespace EventManagementSystemServiceLayer.Controllers
        }
    }
 }
+

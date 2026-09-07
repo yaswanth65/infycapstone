@@ -37,6 +37,15 @@ builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 builder.Services.AddScoped<IRegistrationRequestRepository, RegistrationRequestRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 
+// Brownfield Repositories
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IVenueRepository, VenueRepository>();
+builder.Services.AddScoped<IEventApprovalRepository, EventApprovalRepository>();
+builder.Services.AddScoped<IEventSeriesRepository, EventSeriesRepository>();
+builder.Services.AddScoped<ICapacityAlertRepository, CapacityAlertRepository>();
+builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
+builder.Services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IAuditLoggingService, AuditLoggingService>();
 builder.Services.AddScoped<IAuditMonitoringService, AuditMonitoringService>();
@@ -52,6 +61,17 @@ builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IRegistrationRequestService, RegistrationRequestService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.BusinessManagement.IBusinessManagementService, EventManagementSystemServiceLayer.Services.BusinessManagement.BusinessManagementService>();
+
+// Brownfield Services
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.ICategoryService, EventManagementSystemServiceLayer.Services.Brownfield.CategoryService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.IVenueService, EventManagementSystemServiceLayer.Services.Brownfield.VenueService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.IEventApprovalWorkflowService, EventManagementSystemServiceLayer.Services.Brownfield.EventApprovalWorkflowService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.IRecurringEventService, EventManagementSystemServiceLayer.Services.Brownfield.RecurringEventService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.ICapacityAlertService, EventManagementSystemServiceLayer.Services.Brownfield.CapacityAlertService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.ICalendarExportService, EventManagementSystemServiceLayer.Services.Brownfield.CalendarExportService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.IFeedbackService, EventManagementSystemServiceLayer.Services.Brownfield.FeedbackService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.IRecommendationService, EventManagementSystemServiceLayer.Services.Brownfield.RecommendationService>();
+builder.Services.AddScoped<EventManagementSystemServiceLayer.Services.Brownfield.IAdvancedAnalyticsService, EventManagementSystemServiceLayer.Services.Brownfield.AdvancedAnalyticsService>();
 
 builder.Services.AddScoped<IValidator<UserCreateDto>, UserCreateDtoValidator>();
 builder.Services.AddScoped<IValidator<RoleUpdateDto>, RoleUpdateDtoValidator>();

@@ -55,4 +55,8 @@ public interface IRegistrationRepository
     Task<IReadOnlyList<WaitlistEntry>> GetWaitlistForEventAsync(long eventId, CancellationToken cancellationToken = default);
 
     Task<WaitlistEntry?> GetWaitlistEntryAsync(long waitlistEntryId, CancellationToken cancellationToken = default);
+
+    Task<Registration?> GetByEventAndAttendeeAsync(long eventId, long attendeeUserId, CancellationToken cancellationToken = default);
+
+    Task<int> CountConfirmedByEventAsync(long eventId, CancellationToken cancellationToken = default);
 }
