@@ -18,98 +18,192 @@
     ⚠️ {{ actionError }}
   </div>
 
-  <!-- Active Registrations Section -->
-  <div class="glass-panel" style="padding: 24px; border-radius: 18px; margin-bottom: 24px;">
-    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px;">Active Registrations & Waitlist Queue</h3>
+  <!-- Navigation Tabs -->
+  <div class="tabs-header">
+    <button (click)="activeTab = 'registrations'" class="tab-btn" [class.active]="activeTab === 'registrations'">
+      📋 My Registrations & History
+    </button>
+    <button (click)="activeTab = 'preferences'" class="tab-btn" [class.active]="activeTab === 'preferences'">
+      🎯 Category Interests & Recommendation Preferences
+    </button>
+  </div>
 
-    <div *ngIf="isLoading" style="text-align: center; padding: 20px; color: var(--text-muted);">
-      Loading your registrations...
+  <!-- TAB 1: REGISTRATIONS & HISTORY -->
+  <div *ngIf="activeTab === 'registrations'">
+    <!-- Active Registrations Section -->
+    <div class="glass-panel" style="padding: 24px; border-radius: 18px; margin-bottom: 24px;">
+      <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px;">Active Registrations & Waitlist Queue</h3>
+
+      <div *ngIf="isLoading" style="text-align: center; padding: 20px; color: var(--text-muted);">
+        Loading your registrations...
+      </div>
+
+      <div *ngIf="!isLoading && activeEvents.length === 0" style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.95rem;">
+        You currently have no active event registrations or waitlist entries.
+      </div>
+
+      <div *ngIf="!isLoading && activeEvents.length > 0" class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Event Title</th>
+              <th>Venue</th>
+              <th>Date & Time</th>
+              <th>Status</th>
+              <th>Attendance</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of activeEvents">
+              <td style="font-weight: 600;">
+                {{ item.title }}
+                <div *ngIf="item.registrationId" style="margin-top: 4px;">
+                  <button (click)="getVirtualLink(item.eventId, item.title)" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 2px 8px;">
+                    🔗 Join Virtual Link
+                  </button>
+                </div>
+              </td>
+              <td>{{ item.venue }}</td>
+              <td>{{ item.startAtUtc | date:'short' }}</td>
+              <td>
+                <span class="badge" [class]="item.status === 'Confirmed' ? 'badge-confirmed' : 'badge-waiting'">
+                  {{ item.status === 'Waitlisted' || item.itemType === 'Waitlist' ? ('⏳ Waitlist #' + (item.waitlistPosition || '1')) : item.status }}
+                </span>
+              </td>
+              <td>
+                <span *ngIf="item.attendanceStatus" class="badge badge-attended">{{ item.attendanceStatus }}</span>
+                <span *ngIf="!item.attendanceStatus" style="color: var(--text-dim); font-size: 0.8rem;">Not recorded</span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <button *ngIf="item.registrationId && item.status === 'Confirmed'" (click)="exportCalendar(item.registrationId)" class="btn btn-secondary btn-sm" title="Export Calendar">
+                    📅 .ics
+                  </button>
+                  <button *ngIf="item.registrationId" (click)="cancelRegistration(item.registrationId)" class="btn btn-rose btn-sm">
+                    Cancel
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <div *ngIf="!isLoading && activeEvents.length === 0" style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.95rem;">
-      You currently have no active event registrations or waitlist entries.
-    </div>
+    <!-- Past Events Section with Feedback Support -->
+    <div class="glass-panel" style="padding: 24px; border-radius: 18px;">
+      <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px;">Past Event Participation & Feedback</h3>
 
-    <div *ngIf="!isLoading && activeEvents.length > 0" class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Event Title</th>
-            <th>Venue</th>
-            <th>Event Date & Time</th>
-            <th>Item Type</th>
-            <th>Status</th>
-            <th>Attendance</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let item of activeEvents">
-            <td style="font-weight: 600;">{{ item.title }}</td>
-            <td>{{ item.venue }}</td>
-            <td>{{ item.startAtUtc | date:'medium' }}</td>
-            <td>
-              <span class="badge" [class]="item.itemType === 'Registration' ? 'badge-role' : 'badge-waiting'">
-                {{ item.itemType }}
-              </span>
-            </td>
-            <td>
-              <span class="badge" [class]="item.status === 'Confirmed' ? 'badge-confirmed' : 'badge-waiting'">
-                {{ item.status === 'Waitlisted' || item.itemType === 'Waitlist' ? ('⏳ Waitlist Position #' + (item.waitlistPosition || '1')) : item.status }}
-              </span>
-            </td>
-            <td>
-              <span *ngIf="item.attendanceStatus" class="badge badge-attended">
-                {{ item.attendanceStatus }}
-              </span>
-              <span *ngIf="!item.attendanceStatus" style="color: var(--text-dim); font-size: 0.8rem;">
-                Not recorded
-              </span>
-            </td>
-            <td>
-              <button *ngIf="item.registrationId" (click)="cancelRegistration(item.registrationId)" class="btn btn-rose btn-sm">
-                Cancel Registration
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div *ngIf="!isLoading && pastEvents.length === 0" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem;">
+        No past completed events found.
+      </div>
+
+      <div *ngIf="!isLoading && pastEvents.length > 0" class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Event Title</th>
+              <th>Venue</th>
+              <th>Completed Date</th>
+              <th>Attendance</th>
+              <th>Rating & Feedback</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of pastEvents">
+              <td style="font-weight: 600;">{{ item.title }}</td>
+              <td>{{ item.venue }}</td>
+              <td>{{ item.startAtUtc | date:'mediumDate' }}</td>
+              <td>
+                <span class="badge" [class]="item.attendanceStatus === 'Attended' ? 'badge-attended' : 'badge-closed'">
+                  {{ item.attendanceStatus || 'Did Not Attend' }}
+                </span>
+              </td>
+              <td>
+                <button (click)="openFeedbackModal(item)" class="btn btn-emerald btn-sm">
+                  ⭐ Rate & Review
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <!-- Past Events Section -->
-  <div class="glass-panel" style="padding: 24px; border-radius: 18px;">
-    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px;">Past Event Participation History</h3>
+  <!-- TAB 2: PREFERENCES FOR PERSONALIZED RECOMMENDATIONS -->
+  <div *ngIf="activeTab === 'preferences'" class="glass-panel" style="padding: 28px; border-radius: 20px; max-width: 700px;">
+    <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 8px;">Select Your Event Interests</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">
+      The recommendation algorithm uses your selected interests to match and rank upcoming public events on the home catalog.
+    </p>
 
-    <div *ngIf="!isLoading && pastEvents.length === 0" style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem;">
-      No past completed events found.
+    <div *ngIf="allCategories.length === 0" style="color: var(--text-muted); padding: 20px 0;">
+      No categories available right now.
     </div>
 
-    <div *ngIf="!isLoading && pastEvents.length > 0" class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Event Title</th>
-            <th>Venue</th>
-            <th>Completed Date</th>
-            <th>Status</th>
-            <th>Attendance Outcome</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let item of pastEvents">
-            <td style="font-weight: 600;">{{ item.title }}</td>
-            <td>{{ item.venue }}</td>
-            <td>{{ item.startAtUtc | date:'mediumDate' }}</td>
-            <td><span class="badge badge-closed">{{ item.status }}</span></td>
-            <td>
-              <span class="badge" [class]="item.attendanceStatus === 'Attended' ? 'badge-attended' : 'badge-closed'">
-                {{ item.attendanceStatus || 'Did Not Attend' }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px;">
+      <label *ngFor="let cat of allCategories" style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(15,23,42,0.6); border: 1px solid var(--border-color); border-radius: 10px; cursor: pointer; user-select: none;">
+        <input type="checkbox" [(ngModel)]="userPreferences[cat.categoryId]" style="width: 18px; height: 18px; accent-color: var(--primary);">
+        <div>
+          <div style="font-weight: 700; font-size: 0.9rem;">🏷️ {{ cat.categoryName }}</div>
+          <div style="font-size: 0.75rem; color: var(--text-dim);">{{ cat.description || 'General event track' }}</div>
+        </div>
+      </label>
+    </div>
+
+    <button (click)="savePreferences()" class="btn btn-primary">
+      💾 Save Interests & Update Recommendations
+    </button>
+  </div>
+
+  <!-- Virtual Meeting Link Modal -->
+  <div *ngIf="virtualMeetingUrl" class="modal-overlay" (click)="virtualMeetingUrl = ''">
+    <div class="modal-card" (click)="$event.stopPropagation()" style="max-width: 500px;">
+      <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px;">💻 Confirmed Virtual Meeting Access</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+        For confirmed attendee: <strong>{{ virtualEventTitle }}</strong>
+      </p>
+      <div style="background: rgba(15,23,42,0.8); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-glow); word-break: break-all; font-family: monospace; margin-bottom: 20px;">
+        <a [href]="virtualMeetingUrl" target="_blank" style="color: #818cf8; text-decoration: underline;">
+          {{ virtualMeetingUrl }}
+        </a>
+      </div>
+      <div style="display: flex; justify-content: flex-end;">
+        <button (click)="virtualMeetingUrl = ''" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Submission Modal -->
+  <div *ngIf="feedbackEvent" class="modal-overlay" (click)="closeFeedbackModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()" style="max-width: 500px;">
+      <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px;">⭐ Submit Event Feedback</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+        {{ feedbackEvent.title }} • {{ feedbackEvent.venue }}
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Star Rating (1 to 5 Stars):</label>
+        <select [(ngModel)]="feedbackRating" class="select-field">
+          <option [value]="5">⭐⭐⭐⭐⭐ 5 - Excellent Experience</option>
+          <option [value]="4">⭐⭐⭐⭐ 4 - Very Good</option>
+          <option [value]="3">⭐⭐⭐ 3 - Average</option>
+          <option [value]="2">⭐⭐ 2 - Poor</option>
+          <option [value]="1">⭐ 1 - Very Bad</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Comments & Suggestions:</label>
+        <textarea [(ngModel)]="feedbackComment" class="input-field" rows="3" placeholder="Share your experience or takeaways from this event..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button (click)="closeFeedbackModal()" class="btn btn-secondary">Cancel</button>
+        <button (click)="submitFeedback()" class="btn btn-emerald">Submit Feedback</button>
+      </div>
     </div>
   </div>
 </div>

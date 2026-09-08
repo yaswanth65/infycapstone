@@ -26,6 +26,9 @@
     <button (click)="setTab('create')" class="tab-btn" [class.active]="activeTab === 'create'">
       ✏️ {{ isEditing ? 'Edit Event' : 'Create Event' }}
     </button>
+    <button (click)="setTab('recurring')" class="tab-btn" [class.active]="activeTab === 'recurring'">
+      🔄 Recurring Series
+    </button>
     <button (click)="setTab('roster')" class="tab-btn" [class.active]="activeTab === 'roster'">
       👥 Registrations & Waitlist
     </button>
@@ -92,6 +95,12 @@
             <td>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button *ngIf="ev.status === 'Draft'" (click)="openEditForm(ev)" class="btn btn-secondary btn-sm">Edit</button>
+                <button *ngIf="ev.status === 'Draft'" (click)="submitForApproval(ev.eventId)" class="btn btn-sm" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4);">
+                  🛡️ Approval
+                </button>
+                <button (click)="openCapacityAlertModal(ev.eventId)" class="btn btn-secondary btn-sm">
+                  🔔 Alerts
+                </button>
                 <button *ngIf="ev.status === 'Draft'" (click)="publish(ev.eventId)" class="btn btn-emerald btn-sm">Publish</button>
                 <button *ngIf="ev.status === 'Published'" (click)="close(ev.eventId)" class="btn btn-secondary btn-sm">Close</button>
                 <button *ngIf="ev.status === 'Published' || ev.status === 'Draft'" (click)="cancel(ev.eventId)" class="btn btn-rose btn-sm">Cancel</button>
@@ -117,7 +126,16 @@
 
       <div class="form-group">
         <label for="eventVenue">Venue / Location *</label>
+        <div *ngIf="venues.length > 0" style="margin-bottom: 8px;">
+          <select [(ngModel)]="selectedVenueId" (ngModelChange)="onVenueSelect($event)" name="venueSelect" class="select-field" style="margin-bottom: 6px;">
+            <option [ngValue]="null">-- Select a registered venue (or type custom below) --</option>
+            <option *ngFor="let v of venues" [value]="v.venueId">{{ v.name }} (Cap: {{ v.capacity }})</option>
+          </select>
+        </div>
         <input type="text" id="eventVenue" [(ngModel)]="formModel.venue" name="venue" class="input-field" placeholder="e.g. Auditorium A or Online Teams" required>
+        <div *ngIf="venueCheckMessage" style="font-size: 0.8rem; margin-top: 4px;" [style.color]="venueCheckAvailable ? '#34d399' : '#fb7185'">
+          {{ venueCheckMessage }}
+        </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -148,6 +166,131 @@
         </button>
       </div>
     </form>
+  </div>
+
+  <!-- TAB: RECURRING EVENT SERIES -->
+  <div *ngIf="activeTab === 'recurring'" class="glass-panel" style="padding: 28px; border-radius: 20px; max-width: 750px;">
+    <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 20px;">
+      🔄 Create Recurring Event Series
+    </h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+      Automatically generate multiple event occurrences according to daily, weekly, or monthly repetition rules.
+    </p>
+
+    <form (ngSubmit)="saveRecurringSeries()">
+      <div class="form-group">
+        <label>Series Title *</label>
+        <input type="text" [(ngModel)]="recurringModel.title" name="recTitle" class="input-field" placeholder="e.g. Weekly Cloud Architecture Sync" required>
+      </div>
+
+      <div class="form-group">
+        <label>Venue / Location *</label>
+        <div *ngIf="venues.length > 0" style="margin-bottom: 8px;">
+          <select [(ngModel)]="recurringModel.venueId" (ngModelChange)="recurringModel.venue = venues[$event]?.name || recurringModel.venue" name="recVenueSelect" class="select-field">
+            <option [ngValue]="undefined">-- Select Venue (Optional) --</option>
+            <option *ngFor="let v of venues" [value]="v.venueId">{{ v.name }}</option>
+          </select>
+        </div>
+        <input type="text" [(ngModel)]="recurringModel.venue" name="recVenue" class="input-field" placeholder="e.g. Innovation Hall" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label>First Occurrence Start (UTC) *</label>
+          <input type="datetime-local" [(ngModel)]="recurringModel.firstStartAtUtc" name="recStart" class="input-field" required>
+        </div>
+        <div class="form-group">
+          <label>First Occurrence End (UTC) *</label>
+          <input type="datetime-local" [(ngModel)]="recurringModel.firstEndAtUtc" name="recEnd" class="input-field" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+        <div class="form-group">
+          <label>Recurrence Pattern *</label>
+          <select [(ngModel)]="recurringModel.recurrencePattern" name="recPattern" class="select-field" required>
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Monthly">Monthly</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Interval (e.g. every 1 week) *</label>
+          <input type="number" [(ngModel)]="recurringModel.recurrenceInterval" name="recInterval" class="input-field" min="1" required>
+        </div>
+        <div class="form-group">
+          <label>Capacity per Event *</label>
+          <input type="number" [(ngModel)]="recurringModel.capacity" name="recCapacity" class="input-field" min="1" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Recurrence End Date (UTC) *</label>
+        <input type="datetime-local" [(ngModel)]="recurringModel.recurrenceEndDateUtc" name="recSeriesEnd" class="input-field" required>
+      </div>
+
+      <!-- Virtual Settings -->
+      <div style="margin: 16px 0; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;">
+          <input type="checkbox" [(ngModel)]="recurringModel.isVirtual" name="recIsVirtual">
+          🌐 This is a Virtual Event series
+        </label>
+        <div *ngIf="recurringModel.isVirtual" class="form-group" style="margin-top: 12px;">
+          <label>Virtual Meeting URL</label>
+          <input type="url" [(ngModel)]="recurringModel.virtualMeetingUrl" name="recUrl" class="input-field" placeholder="https://teams.microsoft.com/meet/...">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="recurringModel.description" name="recDesc" class="textarea-field" placeholder="Brief outline of recurring series..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" (click)="setTab('events')" class="btn btn-secondary">Cancel</button>
+        <button type="submit" class="btn btn-primary">Generate Recurring Series</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Capacity Alerts Modal -->
+  <div *ngIf="selectedAlertEventId" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
+    <div class="glass-panel" style="width: 100%; max-width: 520px; padding: 28px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-card);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.25rem; font-weight: 800;">🔔 Capacity Alert Thresholds (Event #{{ selectedAlertEventId }})</h3>
+        <button (click)="closeCapacityAlertModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+        Receive automated alerts when confirmed registrations exceed the configured percentage capacity.
+      </p>
+
+      <!-- Existing alerts list -->
+      <div *ngIf="isLoadingAlerts" style="text-align: center; padding: 20px; color: var(--text-muted);">
+        Loading thresholds...
+      </div>
+      <div *ngIf="!isLoadingAlerts && capacityAlerts.length > 0" style="margin-bottom: 20px;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); margin-bottom: 8px;">ACTIVE THRESHOLDS</div>
+        <div *ngFor="let a of capacityAlerts" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 8px; margin-bottom: 6px;">
+          <span style="font-weight: 700;">{{ a.thresholdPercentage }}% Capacity</span>
+          <span class="badge" [class.badge-closed]="a.isTriggered" [class.badge-healthy]="!a.isTriggered">
+            {{ a.isTriggered ? 'Triggered' : 'Monitoring' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Set Threshold Percentage (e.g. 75, 90)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="number" [(ngModel)]="alertThreshold" min="1" max="100" class="input-field" style="flex: 1;" placeholder="80">
+          <button (click)="saveCapacityAlert()" class="btn btn-primary">Add Threshold</button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button (click)="closeCapacityAlertModal()" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
   </div>
 
   <!-- TAB 3: EVENT ROSTER (REGISTRATIONS & WAITLIST) -->

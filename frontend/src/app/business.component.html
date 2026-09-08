@@ -10,6 +10,9 @@
     <button (click)="setTab('overview')" class="tab-btn" [class.active]="activeTab === 'overview'">
       📊 Executive Dashboard
     </button>
+    <button (click)="setTab('analytics')" class="tab-btn" [class.active]="activeTab === 'analytics'">
+      🧠 Advanced Analytics & Trends
+    </button>
     <button (click)="setTab('registrations')" class="tab-btn" [class.active]="activeTab === 'registrations'">
       📈 Registration Summaries
     </button>
@@ -70,8 +73,79 @@
     </div>
   </div>
 
+  <!-- TAB: ADVANCED ANALYTICS -->
+  <div *ngIf="activeTab === 'analytics'">
+    <div *ngIf="isLoading" style="text-align: center; padding: 40px; color: var(--text-muted);">
+      Loading deep analytics...
+    </div>
+
+    <div *ngIf="!isLoading && analytics">
+      <!-- High-level KPIs -->
+      <div class="metrics-grid">
+        <div class="metric-card glass-panel">
+          <span class="label">Attendance vs No-Show</span>
+          <span class="value" style="color: #34d399;">{{ analytics.overallAttendanceRatePercentage }}%</span>
+          <span style="font-size: 0.75rem; color: #fb7185;">No-show: {{ analytics.overallNoShowRatePercentage }}%</span>
+        </div>
+
+        <div class="metric-card glass-panel">
+          <span class="label">Total Check-Ins</span>
+          <span class="value" style="color: #818cf8;">{{ analytics.totalAttendeesCheckedIn }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">Out of {{ analytics.totalRegistrations }} registrations</span>
+        </div>
+
+        <div class="metric-card glass-panel">
+          <span class="label">Average Rating</span>
+          <span class="value" style="color: #fbbf24;">★ {{ analytics.averageSystemRating }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">Across all attendee reviews</span>
+        </div>
+
+        <div class="metric-card glass-panel">
+          <span class="label">Total Cancellations</span>
+          <span class="value" style="color: #fb7185;">{{ analytics.totalCancellations }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">Cancelled before event</span>
+        </div>
+      </div>
+
+      <!-- Categories Popularity & Monthly Trends -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+        <!-- Category Breakdown -->
+        <div class="glass-panel" style="padding: 24px; border-radius: 18px;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;">🏷️ Popularity by Category</h3>
+          <div *ngIf="analytics.categoryBreakdown.length === 0" style="color: var(--text-muted); font-size: 0.9rem;">
+            No category metrics recorded yet.
+          </div>
+          <div *ngFor="let cat of analytics.categoryBreakdown" style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px;">
+              <span style="font-weight: 600;">{{ cat.categoryName }}</span>
+              <span style="color: var(--text-dim);">{{ cat.eventCount }} events · {{ cat.totalRegistrations }} attendees</span>
+            </div>
+            <div style="height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+              <div [style.width.%]="cat.totalRegistrations > 0 ? (cat.totalRegistrations / analytics.totalRegistrations * 100) : 10" style="height: 100%; background: var(--primary);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Trends -->
+        <div class="glass-panel" style="padding: 24px; border-radius: 18px;">
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;">📅 Monthly Trajectory</h3>
+          <div *ngIf="analytics.monthlyTrends.length === 0" style="color: var(--text-muted); font-size: 0.9rem;">
+            No monthly trend data available yet.
+          </div>
+          <div *ngFor="let m of analytics.monthlyTrends" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">{{ m.monthYear }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">{{ m.eventsCount }} events held</div>
+            </div>
+            <span class="badge badge-role">{{ m.registrationsCount }} Registrations</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- TAB 2, 3, 4: SUMMARY REPORTS DATA TABLE -->
-  <div *ngIf="activeTab !== 'overview'">
+  <div *ngIf="activeTab !== 'overview' && activeTab !== 'analytics'">
     <div *ngIf="isLoading" style="text-align: center; padding: 40px; color: var(--text-muted);">
       Loading report summaries...
     </div>

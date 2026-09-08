@@ -28,6 +28,15 @@
     <button (click)="setTab('users')" class="tab-btn" [class.active]="activeTab === 'users'">
       👥 User Accounts ({{ users.length }})
     </button>
+    <button (click)="setTab('categories')" class="tab-btn" [class.active]="activeTab === 'categories'">
+      🏷️ Categories ({{ categories.length }})
+    </button>
+    <button (click)="setTab('venues')" class="tab-btn" [class.active]="activeTab === 'venues'">
+      🏢 Venues ({{ venues.length }})
+    </button>
+    <button (click)="setTab('approvals')" class="tab-btn" [class.active]="activeTab === 'approvals'">
+      🛡️ Approvals ({{ pendingApprovals.length }})
+    </button>
     <button (click)="setTab('create-user')" class="tab-btn" [class.active]="activeTab === 'create-user'">
       ➕ Create User Account
     </button>
@@ -218,6 +227,192 @@
         <span class="value" style="color: #fbbf24;">{{ metrics.memoryUsageMb }} MB</span>
         <span style="font-size: 0.75rem; color: var(--text-dim);">Uptime: {{ metrics.uptimeSeconds }} sec</span>
       </div>
+    </div>
+  </div>
+
+  <!-- TAB: CATEGORIES -->
+  <div *ngIf="activeTab === 'categories'">
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start;">
+      <!-- Create Category Form -->
+      <div class="glass-panel" style="padding: 24px; border-radius: 16px;">
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 16px;">🏷️ Add New Category</h3>
+        <form (ngSubmit)="createCategory()">
+          <div class="form-group">
+            <label>Category Name *</label>
+            <input type="text" [(ngModel)]="newCategoryName" name="catName" class="input-field" placeholder="e.g. AI & Machine Learning" required>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea [(ngModel)]="newCategoryDesc" name="catDesc" class="input-field" rows="3" placeholder="Brief description of this category"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Create Category</button>
+        </form>
+      </div>
+
+      <!-- Categories Table -->
+      <div>
+        <div *ngIf="isLoadingCategories" style="text-align: center; padding: 40px; color: var(--text-muted);">
+          Loading categories...
+        </div>
+        <div *ngIf="!isLoadingCategories && categories.length === 0" class="glass-panel" style="text-align: center; padding: 40px; border-radius: 16px;">
+          <p style="color: var(--text-muted);">No categories created yet.</p>
+        </div>
+        <div *ngIf="!isLoadingCategories && categories.length > 0" class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Category Name</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of categories">
+                <td>#{{ c.categoryId }}</td>
+                <td style="font-weight: 700; color: var(--text-main);">{{ c.categoryName }}</td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">{{ c.description || '—' }}</td>
+                <td>
+                  <span class="badge" [class.badge-healthy]="c.isActive" [class.badge-closed]="!c.isActive">
+                    {{ c.isActive ? 'Active' : 'Disabled' }}
+                  </span>
+                </td>
+                <td>
+                  <button (click)="toggleCategory(c)" class="btn btn-sm" [class.btn-secondary]="c.isActive" [class.btn-primary]="!c.isActive">
+                    {{ c.isActive ? 'Disable' : 'Enable' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: VENUES -->
+  <div *ngIf="activeTab === 'venues'">
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: start;">
+      <!-- Create Venue Form -->
+      <div class="glass-panel" style="padding: 24px; border-radius: 16px;">
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 16px;">🏢 Register New Venue</h3>
+        <form (ngSubmit)="createVenue()">
+          <div class="form-group">
+            <label>Venue Name *</label>
+            <input type="text" [(ngModel)]="newVenueName" name="vName" class="input-field" placeholder="e.g. Grand Convention Center" required>
+          </div>
+          <div class="form-group">
+            <label>Address *</label>
+            <input type="text" [(ngModel)]="newVenueAddress" name="vAddress" class="input-field" placeholder="e.g. 100 Main St, Tech City" required>
+          </div>
+          <div class="form-group">
+            <label>Maximum Capacity *</label>
+            <input type="number" [(ngModel)]="newVenueCapacity" name="vCapacity" class="input-field" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Contact Details</label>
+            <input type="text" [(ngModel)]="newVenueContact" name="vContact" class="input-field" placeholder="e.g. venue-ops@example.com">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Save Venue</button>
+        </form>
+      </div>
+
+      <!-- Venues Table -->
+      <div>
+        <div *ngIf="isLoadingVenues" style="text-align: center; padding: 40px; color: var(--text-muted);">
+          Loading venues...
+        </div>
+        <div *ngIf="!isLoadingVenues && venues.length === 0" class="glass-panel" style="text-align: center; padding: 40px; border-radius: 16px;">
+          <p style="color: var(--text-muted);">No venues registered yet.</p>
+        </div>
+        <div *ngIf="!isLoadingVenues && venues.length > 0" class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Venue Details</th>
+                <th>Capacity</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let v of venues">
+                <td>#{{ v.venueId }}</td>
+                <td>
+                  <div style="font-weight: 700; color: var(--text-main);">{{ v.name }}</div>
+                  <div style="font-size: 0.8rem; color: var(--text-dim);">📍 {{ v.address }}</div>
+                </td>
+                <td>
+                  <span class="badge badge-role">{{ v.capacity }} seats</span>
+                </td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">{{ v.contactDetails || '—' }}</td>
+                <td>
+                  <span class="badge" [class.badge-healthy]="v.isActive" [class.badge-closed]="!v.isActive">
+                    {{ v.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
+                <td>
+                  <button (click)="toggleVenue(v)" class="btn btn-sm" [class.btn-secondary]="v.isActive" [class.btn-primary]="!v.isActive">
+                    {{ v.isActive ? 'Deactivate' : 'Activate' }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: APPROVALS -->
+  <div *ngIf="activeTab === 'approvals'">
+    <div *ngIf="isLoadingApprovals" style="text-align: center; padding: 40px; color: var(--text-muted);">
+      Loading pending approvals...
+    </div>
+    <div *ngIf="!isLoadingApprovals && pendingApprovals.length === 0" class="glass-panel" style="text-align: center; padding: 40px; border-radius: 16px;">
+      <p style="color: var(--text-muted); font-size: 1.1rem;">🎉 No events are currently waiting for approval.</p>
+    </div>
+    <div *ngIf="!isLoadingApprovals && pendingApprovals.length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Req ID</th>
+            <th>Event Title</th>
+            <th>Organizer</th>
+            <th>Submitted At</th>
+            <th>Remarks / Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let req of pendingApprovals">
+            <td>#{{ req.approvalRequestId }}</td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-main);">{{ req.eventTitle }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">Event ID: #{{ req.eventId }}</div>
+            </td>
+            <td>
+              <span class="badge badge-role">{{ req.requestedByUserName }}</span>
+            </td>
+            <td style="font-size: 0.85rem; color: var(--text-muted);">{{ req.requestedAtUtc | date:'short' }}</td>
+            <td>
+              <div style="display: flex; flex-direction: column; gap: 8px; min-width: 200px;">
+                <input type="text" [(ngModel)]="approvalRemarks[req.approvalRequestId]" class="input-field" style="padding: 4px 8px; font-size: 0.8rem;" placeholder="Review notes / reason...">
+                <div style="display: flex; gap: 8px;">
+                  <button (click)="reviewApproval(req.approvalRequestId, true)" class="btn btn-primary btn-sm" style="flex: 1;">
+                    ✓ Approve
+                  </button>
+                  <button (click)="reviewApproval(req.approvalRequestId, false)" class="btn btn-rose btn-sm" style="flex: 1;">
+                    ✕ Reject
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

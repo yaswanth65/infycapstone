@@ -14,6 +14,13 @@ import { PublicEventDto } from './models';
 })
 export class EventsComponent implements OnInit {
   events: PublicEventDto[] = [];
+  recommendedEvents: any[] = [];
+  categories: any[] = [];
+  selectedCategory = '';
+
+  // Feedback viewing
+  feedbackSummary: any = null;
+  isLoadingFeedback = false;
 
   constructor(
     public apiService: ApiService,
@@ -35,8 +42,27 @@ export class EventsComponent implements OnInit {
   actionError = '';
 
   ngOnInit() {
+    this.loadCategories();
     this.loadMyRegistrations();
     this.loadEvents();
+    this.loadRecommendations();
+  }
+
+  loadCategories() {
+    this.apiService.getCategories(true).subscribe({
+      next: (res) => {
+        if (res?.data) this.categories = res.data;
+      }
+    });
+  }
+
+  loadRecommendations() {
+    if (!this.authService.isAuthenticated() || this.authService.getRole() !== 'Attendee') return;
+    this.apiService.getRecommendations(6).subscribe({
+      next: (res) => {
+        if (res?.data) this.recommendedEvents = res.data;
+      }
+    });
   }
 
   loadMyRegistrations() {
@@ -90,15 +116,47 @@ export class EventsComponent implements OnInit {
   }
 
   viewDetails(eventId: number) {
+    this.feedbackSummary = null;
     this.apiService.getPublicEventById(eventId).subscribe({
       next: (data) => {
         this.selectedEvent = data;
+        this.loadEventFeedback(eventId);
+      }
+    });
+  }
+
+  loadEventFeedback(eventId: number) {
+    this.isLoadingFeedback = true;
+    this.apiService.getEventFeedbackSummary(eventId).subscribe({
+      next: (res) => {
+        this.feedbackSummary = res.data;
+        this.isLoadingFeedback = false;
+      },
+      error: () => {
+        this.isLoadingFeedback = false;
+      }
+    });
+  }
+
+  downloadCalendar(eventId: number) {
+    this.apiService.exportEventCalendar(eventId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `event-${eventId}.ics`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.actionError = 'Failed to export calendar.';
       }
     });
   }
 
   closeModal() {
     this.selectedEvent = null;
+    this.feedbackSummary = null;
     this.actionMessage = '';
     this.actionError = '';
   }

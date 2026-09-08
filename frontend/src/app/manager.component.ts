@@ -8,7 +8,11 @@ import {
   EventUpdateDto,
   RegistrationRequestResponseDto,
   AttendanceResponseDto,
-  EventRosterResponseDto
+  EventRosterResponseDto,
+  CategoryResponseDto,
+  VenueResponseDto,
+  RecurringEventCreateDto,
+  CapacityAlertResponseDto
 } from './models';
 
 @Component({
@@ -18,7 +22,7 @@ import {
   templateUrl: './manager.component.html'
 })
 export class ManagerComponent implements OnInit {
-  activeTab: 'events' | 'create' | 'roster' | 'requests' | 'attendance' = 'events';
+  activeTab: 'events' | 'create' | 'recurring' | 'roster' | 'requests' | 'attendance' = 'events';
 
   constructor(public apiService: ApiService) {}
 
@@ -26,6 +30,10 @@ export class ManagerComponent implements OnInit {
   events: EventResponseDto[] = [];
   statusFilter = '';
   isLoadingEvents = false;
+
+  // Master Reference Data
+  categories: CategoryResponseDto[] = [];
+  venues: VenueResponseDto[] = [];
 
   // Create / Edit form model
   isEditing = false;
@@ -38,6 +46,31 @@ export class ManagerComponent implements OnInit {
     endAtUtc: '',
     capacity: 50
   };
+  selectedVenueId: number | null = null;
+  venueCheckMessage: string = '';
+  venueCheckAvailable: boolean | null = null;
+
+  // Recurring Event Form Model
+  recurringModel: RecurringEventCreateDto = {
+    title: '',
+    description: '',
+    venue: '',
+    venueId: undefined,
+    firstStartAtUtc: '',
+    firstEndAtUtc: '',
+    capacity: 50,
+    recurrencePattern: 'Weekly',
+    recurrenceInterval: 1,
+    recurrenceEndDateUtc: '',
+    isVirtual: false,
+    virtualMeetingUrl: ''
+  };
+
+  // Capacity Alerts Modal State
+  selectedAlertEventId: number | null = null;
+  alertThreshold: number = 80;
+  capacityAlerts: CapacityAlertResponseDto[] = [];
+  isLoadingAlerts = false;
 
   // Registration Requests
   requests: RegistrationRequestResponseDto[] = [];
@@ -65,14 +98,31 @@ export class ManagerComponent implements OnInit {
 
   ngOnInit() {
     this.loadEvents();
+    this.loadCategories();
+    this.loadVenues();
   }
 
-  setTab(tab: 'events' | 'create' | 'roster' | 'requests' | 'attendance') {
+  loadCategories() {
+    this.apiService.getCategories(true).subscribe({
+      next: (res) => this.categories = res.data || [],
+      error: () => {}
+    });
+  }
+
+  loadVenues() {
+    this.apiService.getVenues(true).subscribe({
+      next: (res) => this.venues = res.data || [],
+      error: () => {}
+    });
+  }
+
+  setTab(tab: 'events' | 'create' | 'recurring' | 'roster' | 'requests' | 'attendance') {
     this.activeTab = tab;
     this.message = '';
     this.errorMessage = '';
     if (tab === 'events') this.loadEvents();
     if (tab === 'requests') this.loadRequests();
+    if (tab === 'recurring') this.openRecurringForm();
     if (tab === 'roster') {
       if (!this.rosterEventId && this.events.length > 0) {
         this.rosterEventId = this.events[0].eventId;
@@ -199,6 +249,128 @@ export class ManagerComponent implements OnInit {
         error: (err) => this.errorMessage = err?.error?.message || 'Failed to create event.'
       });
     }
+  }
+
+  onVenueSelect(venueId: number) {
+    this.selectedVenueId = venueId;
+    const v = this.venues.find(item => item.venueId === Number(venueId));
+    if (v) {
+      this.formModel.venue = `${v.name} (${v.address || ''})`;
+      this.checkVenueAvailability();
+    }
+  }
+
+  checkVenueAvailability() {
+    if (!this.selectedVenueId || !this.formModel.startAtUtc || !this.formModel.endAtUtc) return;
+    this.apiService.checkVenueAvailability({
+      venueId: this.selectedVenueId,
+      startAtUtc: this.toUtcIso(this.formModel.startAtUtc),
+      endAtUtc: this.toUtcIso(this.formModel.endAtUtc),
+      excludeEventId: this.editingEventId || undefined
+    }).subscribe({
+      next: (res) => {
+        this.venueCheckAvailable = res.data.isAvailable;
+        this.venueCheckMessage = res.data.message;
+      },
+      error: () => {
+        this.venueCheckAvailable = null;
+        this.venueCheckMessage = '';
+      }
+    });
+  }
+
+  submitForApproval(eventId: number) {
+    const remarks = prompt('Enter any notes/remarks for Admin review (optional):') || 'Submitted for publication review';
+    this.apiService.submitEventForApproval({ eventId, remarks }).subscribe({
+      next: () => {
+        this.message = 'Event submitted for administrator review and approval.';
+        this.loadEvents();
+      },
+      error: (err) => this.errorMessage = err?.error?.message || 'Failed to submit event for approval.'
+    });
+  }
+
+  // Capacity Alerts
+  openCapacityAlertModal(eventId: number) {
+    this.selectedAlertEventId = eventId;
+    this.alertThreshold = 80;
+    this.loadCapacityAlerts(eventId);
+  }
+
+  closeCapacityAlertModal() {
+    this.selectedAlertEventId = null;
+    this.capacityAlerts = [];
+  }
+
+  loadCapacityAlerts(eventId: number) {
+    this.isLoadingAlerts = true;
+    this.apiService.getCapacityAlerts(eventId).subscribe({
+      next: (res) => {
+        this.capacityAlerts = res.data || [];
+        this.isLoadingAlerts = false;
+      },
+      error: () => this.isLoadingAlerts = false
+    });
+  }
+
+  saveCapacityAlert() {
+    if (!this.selectedAlertEventId || this.alertThreshold <= 0 || this.alertThreshold > 100) {
+      this.errorMessage = 'Please enter a threshold percentage between 1 and 100.';
+      return;
+    }
+    this.apiService.setCapacityAlert({
+      eventId: this.selectedAlertEventId,
+      thresholdPercentage: Number(this.alertThreshold)
+    }).subscribe({
+      next: () => {
+        this.message = `Capacity alert threshold set at ${this.alertThreshold}%.`;
+        this.loadCapacityAlerts(this.selectedAlertEventId!);
+      },
+      error: (err) => this.errorMessage = err?.error?.message || 'Failed to configure capacity alert.'
+    });
+  }
+
+  // Recurring Event Series
+  openRecurringForm() {
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 16);
+    const dayAfter = new Date(Date.now() + 90000000).toISOString().slice(0, 16);
+    const nextMonth = new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 16);
+    this.recurringModel = {
+      title: '',
+      description: '',
+      venue: '',
+      venueId: undefined,
+      firstStartAtUtc: tomorrow,
+      firstEndAtUtc: dayAfter,
+      capacity: 50,
+      recurrencePattern: 'Weekly',
+      recurrenceInterval: 1,
+      recurrenceEndDateUtc: nextMonth,
+      isVirtual: false,
+      virtualMeetingUrl: ''
+    };
+  }
+
+  saveRecurringSeries() {
+    if (!this.recurringModel.title || !this.recurringModel.venue || !this.recurringModel.firstStartAtUtc || !this.recurringModel.firstEndAtUtc || !this.recurringModel.recurrenceEndDateUtc) {
+      this.errorMessage = 'Please fill all required fields for recurring series.';
+      return;
+    }
+
+    const payload: RecurringEventCreateDto = {
+      ...this.recurringModel,
+      firstStartAtUtc: this.toUtcIso(this.recurringModel.firstStartAtUtc),
+      firstEndAtUtc: this.toUtcIso(this.recurringModel.firstEndAtUtc),
+      recurrenceEndDateUtc: this.toUtcIso(this.recurringModel.recurrenceEndDateUtc)
+    };
+
+    this.apiService.createRecurringEvent(payload).subscribe({
+      next: (res) => {
+        this.message = `Successfully generated ${res.data.occurrencesCount} occurrences in series #${res.data.seriesId}!`;
+        this.setTab('events');
+      },
+      error: (err) => this.errorMessage = err?.error?.message || 'Failed to create recurring event series.'
+    });
   }
 
   publish(eventId: number) {

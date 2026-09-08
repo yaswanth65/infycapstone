@@ -8,7 +8,10 @@ import {
   UserCreateDto,
   RoleResponse,
   AuditLogResponseDto,
-  PerformanceMetricsDto
+  PerformanceMetricsDto,
+  CategoryResponseDto,
+  VenueResponseDto,
+  EventApprovalResponseDto
 } from './models';
 
 @Component({
@@ -18,7 +21,7 @@ import {
   templateUrl: './admin.component.html'
 })
 export class AdminComponent implements OnInit {
-  activeTab: 'users' | 'create-user' | 'audit' | 'metrics' = 'users';
+  activeTab: 'users' | 'create-user' | 'categories' | 'venues' | 'approvals' | 'audit' | 'metrics' = 'users';
 
   constructor(public apiService: ApiService, public authService: AuthService) {}
 
@@ -26,6 +29,25 @@ export class AdminComponent implements OnInit {
   users: UserResponseDto[] = [];
   roles: RoleResponse[] = [];
   isLoadingUsers = false;
+
+  // Categories (Brownfield)
+  categories: CategoryResponseDto[] = [];
+  newCategoryName = '';
+  newCategoryDesc = '';
+  isLoadingCategories = false;
+
+  // Venues (Brownfield)
+  venues: VenueResponseDto[] = [];
+  newVenueName = '';
+  newVenueAddress = '';
+  newVenueCapacity = 100;
+  newVenueContact = '';
+  isLoadingVenues = false;
+
+  // Approvals (Brownfield)
+  pendingApprovals: EventApprovalResponseDto[] = [];
+  approvalRemarks: Record<number, string> = {};
+  isLoadingApprovals = false;
 
   // Create User Model
   userModel: UserCreateDto = {
@@ -52,15 +74,129 @@ export class AdminComponent implements OnInit {
   ngOnInit() {
     this.loadRoles();
     this.loadUsers();
+    this.loadCategories();
+    this.loadVenues();
+    this.loadApprovals();
   }
 
-  setTab(tab: 'users' | 'create-user' | 'audit' | 'metrics') {
+  setTab(tab: 'users' | 'create-user' | 'categories' | 'venues' | 'approvals' | 'audit' | 'metrics') {
     this.activeTab = tab;
     this.message = '';
-    this.errorMessage = '';
     if (tab === 'users') this.loadUsers();
+    if (tab === 'categories') this.loadCategories();
+    if (tab === 'venues') this.loadVenues();
+    if (tab === 'approvals') this.loadApprovals();
     if (tab === 'audit') this.loadAuditLogs();
     if (tab === 'metrics') this.loadMetrics();
+  }
+
+  loadCategories() {
+    this.isLoadingCategories = true;
+    this.apiService.getCategories(false).subscribe({
+      next: (res) => {
+        this.categories = res.data || [];
+        this.isLoadingCategories = false;
+      },
+      error: () => this.isLoadingCategories = false
+    });
+  }
+
+  createCategory() {
+    if (!this.newCategoryName.trim()) return;
+    this.apiService.createCategory({
+      categoryName: this.newCategoryName.trim(),
+      description: this.newCategoryDesc.trim()
+    }).subscribe({
+      next: () => {
+        this.message = 'Category created successfully.';
+        this.newCategoryName = '';
+        this.newCategoryDesc = '';
+        this.loadCategories();
+      },
+      error: (err) => this.errorMessage = err?.error?.message || 'Failed to create category.'
+    });
+  }
+
+  toggleCategory(c: CategoryResponseDto) {
+    this.apiService.updateCategory(c.categoryId, {
+      categoryId: c.categoryId,
+      categoryName: c.categoryName,
+      description: c.description,
+      isActive: !c.isActive
+    }).subscribe({
+      next: () => this.loadCategories(),
+      error: () => this.errorMessage = 'Failed to update category.'
+    });
+  }
+
+  loadVenues() {
+    this.isLoadingVenues = true;
+    this.apiService.getVenues(false).subscribe({
+      next: (res) => {
+        this.venues = res.data || [];
+        this.isLoadingVenues = false;
+      },
+      error: () => this.isLoadingVenues = false
+    });
+  }
+
+  createVenue() {
+    if (!this.newVenueName.trim()) return;
+    this.apiService.createVenue({
+      name: this.newVenueName.trim(),
+      address: this.newVenueAddress.trim(),
+      capacity: Number(this.newVenueCapacity),
+      contactDetails: this.newVenueContact.trim()
+    }).subscribe({
+      next: () => {
+        this.message = 'Venue registered successfully.';
+        this.newVenueName = '';
+        this.newVenueAddress = '';
+        this.newVenueContact = '';
+        this.loadVenues();
+      },
+      error: (err) => this.errorMessage = err?.error?.message || 'Failed to register venue.'
+    });
+  }
+
+  toggleVenue(v: VenueResponseDto) {
+    this.apiService.updateVenue(v.venueId, {
+      venueId: v.venueId,
+      name: v.name,
+      address: v.address,
+      capacity: v.capacity,
+      contactDetails: v.contactDetails,
+      isActive: !v.isActive
+    }).subscribe({
+      next: () => this.loadVenues(),
+      error: () => this.errorMessage = 'Failed to update venue.'
+    });
+  }
+
+  loadApprovals() {
+    this.isLoadingApprovals = true;
+    this.apiService.getPendingApprovals().subscribe({
+      next: (res) => {
+        this.pendingApprovals = res.data || [];
+        this.isLoadingApprovals = false;
+      },
+      error: () => this.isLoadingApprovals = false
+    });
+  }
+
+  reviewApproval(requestId: number, approve: boolean) {
+    const remarks = this.approvalRemarks[requestId] || (approve ? 'Approved by Admin.' : 'Needs revision.');
+    this.apiService.reviewApproval({
+      approvalRequestId: requestId,
+      approve,
+      remarks
+    }).subscribe({
+      next: () => {
+        this.message = `Event has been ${approve ? 'approved' : 'rejected'}. Organizer notified.`;
+        this.loadApprovals();
+      },
+      error: (err) => this.errorMessage = err?.error?.message || 'Review action failed.'
+    });
   }
 
   loadRoles() {

@@ -31,7 +31,30 @@ import {
   DashboardMetricsDto,
   EventSummaryDto,
   NotificationItemDto,
-  EventRosterResponseDto
+  EventRosterResponseDto,
+  CategoryResponseDto,
+  CategoryCreateDto,
+  CategoryUpdateDto,
+  VenueResponseDto,
+  VenueCreateDto,
+  VenueUpdateDto,
+  VenueAvailabilityCheckDto,
+  VenueAvailabilityResultDto,
+  RecurringEventCreateDto,
+  RecurringEventSeriesDto,
+  EventApprovalResponseDto,
+  EventApprovalSubmitDto,
+  EventApprovalReviewDto,
+  CapacityAlertConfigDto,
+  CapacityAlertResponseDto,
+  FeedbackCreateDto,
+  FeedbackItemDto,
+  FeedbackSummaryDto,
+  AttendeeCategoryPreferenceDto,
+  SetPreferencesDto,
+  RecommendedEventDto,
+  VirtualAccessLinkDto,
+  AdvancedAnalyticsDto
 } from './models';
 
 @Injectable({
@@ -225,5 +248,111 @@ export class ApiService {
     if (startDate) params = params.set('startDate', startDate);
     if (endDate) params = params.set('endDate', endDate);
     return this.http.get<ApiResponse<PaginatedResponse<EventSummaryDto>>>(`${this.baseUrl}/business/reports/completion`, { params });
+  }
+
+  // 9. Brownfield Phase 1 Methods
+
+  // Custom Categories
+  getCategories(onlyActive: boolean = true): Observable<ApiResponse<CategoryResponseDto[]>> {
+    const params = new HttpParams().set('onlyActive', onlyActive.toString());
+    return this.http.get<ApiResponse<CategoryResponseDto[]>>(`${this.baseUrl}/categories`, { params });
+  }
+
+  createCategory(dto: CategoryCreateDto): Observable<ApiResponse<CategoryResponseDto>> {
+    return this.http.post<ApiResponse<CategoryResponseDto>>(`${this.baseUrl}/categories`, dto);
+  }
+
+  updateCategory(categoryId: number, dto: CategoryUpdateDto): Observable<ApiResponse<CategoryResponseDto>> {
+    return this.http.put<ApiResponse<CategoryResponseDto>>(`${this.baseUrl}/categories/${categoryId}`, dto);
+  }
+
+  // Venues
+  getVenues(onlyActive: boolean = true): Observable<ApiResponse<VenueResponseDto[]>> {
+    const params = new HttpParams().set('onlyActive', onlyActive.toString());
+    return this.http.get<ApiResponse<VenueResponseDto[]>>(`${this.baseUrl}/venues`, { params });
+  }
+
+  createVenue(dto: VenueCreateDto): Observable<ApiResponse<VenueResponseDto>> {
+    return this.http.post<ApiResponse<VenueResponseDto>>(`${this.baseUrl}/venues`, dto);
+  }
+
+  updateVenue(venueId: number, dto: VenueUpdateDto): Observable<ApiResponse<VenueResponseDto>> {
+    return this.http.put<ApiResponse<VenueResponseDto>>(`${this.baseUrl}/venues/${venueId}`, dto);
+  }
+
+  checkVenueAvailability(dto: VenueAvailabilityCheckDto): Observable<ApiResponse<VenueAvailabilityResultDto>> {
+    return this.http.post<ApiResponse<VenueAvailabilityResultDto>>(`${this.baseUrl}/venues/check-availability`, dto);
+  }
+
+  // Recurring Events
+  createRecurringEvent(dto: RecurringEventCreateDto): Observable<ApiResponse<RecurringEventSeriesDto>> {
+    return this.http.post<ApiResponse<RecurringEventSeriesDto>>(`${this.baseUrl}/event-manager/events/recurring`, dto);
+  }
+
+  // Event Approval Workflow
+  submitEventForApproval(dto: EventApprovalSubmitDto): Observable<ApiResponse<EventApprovalResponseDto>> {
+    return this.http.post<ApiResponse<EventApprovalResponseDto>>(`${this.baseUrl}/approvals/submit`, dto);
+  }
+
+  getPendingApprovals(): Observable<ApiResponse<EventApprovalResponseDto[]>> {
+    return this.http.get<ApiResponse<EventApprovalResponseDto[]>>(`${this.baseUrl}/approvals/pending`);
+  }
+
+  reviewApproval(dto: EventApprovalReviewDto): Observable<ApiResponse<EventApprovalResponseDto>> {
+    return this.http.post<ApiResponse<EventApprovalResponseDto>>(`${this.baseUrl}/approvals/review`, dto);
+  }
+
+  // Capacity Alerts
+  setCapacityAlert(dto: CapacityAlertConfigDto): Observable<ApiResponse<CapacityAlertResponseDto>> {
+    return this.http.post<ApiResponse<CapacityAlertResponseDto>>(`${this.baseUrl}/event-manager/events/${dto.eventId}/capacity-alerts`, dto);
+  }
+
+  getCapacityAlerts(eventId: number): Observable<ApiResponse<CapacityAlertResponseDto[]>> {
+    return this.http.get<ApiResponse<CapacityAlertResponseDto[]>>(`${this.baseUrl}/event-manager/events/${eventId}/capacity-alerts`);
+  }
+
+  // Virtual Event Link
+  getVirtualAccessLink(eventId: number): Observable<VirtualAccessLinkDto> {
+    return this.http.get<VirtualAccessLinkDto>(`${this.baseUrl}/attendee/events/${eventId}/access-link`);
+  }
+
+  // Feedback and Ratings
+  submitFeedback(dto: FeedbackCreateDto): Observable<ApiResponse<FeedbackItemDto>> {
+    return this.http.post<ApiResponse<FeedbackItemDto>>(`${this.baseUrl}/feedback`, dto);
+  }
+
+  getEventFeedbackSummary(eventId: number): Observable<ApiResponse<FeedbackSummaryDto>> {
+    return this.http.get<ApiResponse<FeedbackSummaryDto>>(`${this.baseUrl}/feedback/events/${eventId}/summary`);
+  }
+
+  // Recommendations & Preferences
+  getRecommendations(limit: number = 10): Observable<ApiResponse<RecommendedEventDto[]>> {
+    const params = new HttpParams().set('limit', limit.toString());
+    return this.http.get<ApiResponse<RecommendedEventDto[]>>(`${this.baseUrl}/recommendations`, { params });
+  }
+
+  getPreferences(): Observable<ApiResponse<AttendeeCategoryPreferenceDto[]>> {
+    return this.http.get<ApiResponse<AttendeeCategoryPreferenceDto[]>>(`${this.baseUrl}/recommendations/preferences`);
+  }
+
+  setPreferences(dto: SetPreferencesDto): Observable<ApiResponse<object>> {
+    return this.http.post<ApiResponse<object>>(`${this.baseUrl}/recommendations/preferences`, dto);
+  }
+
+  // Advanced Analytics
+  getAdvancedAnalytics(fromUtc?: string, toUtc?: string): Observable<ApiResponse<AdvancedAnalyticsDto>> {
+    let params = new HttpParams();
+    if (fromUtc) params = params.set('fromUtc', fromUtc);
+    if (toUtc) params = params.set('toUtc', toUtc);
+    return this.http.get<ApiResponse<AdvancedAnalyticsDto>>(`${this.baseUrl}/business/analytics`, { params });
+  }
+
+  // Calendar Export
+  exportRegistrationCalendar(registrationId: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/calendar/registrations/${registrationId}/export`, { responseType: 'blob' });
+  }
+
+  exportEventCalendar(eventId: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/calendar/events/${eventId}/export`, { responseType: 'blob' });
   }
 }

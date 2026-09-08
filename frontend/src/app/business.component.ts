@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService } from './api.service';
-import { DashboardMetricsDto, EventSummaryDto } from './models';
+import { DashboardMetricsDto, EventSummaryDto, AdvancedAnalyticsDto } from './models';
 
 @Component({
   selector: 'app-business',
@@ -10,24 +10,39 @@ import { DashboardMetricsDto, EventSummaryDto } from './models';
   templateUrl: './business.component.html'
 })
 export class BusinessComponent implements OnInit {
-  activeTab: 'overview' | 'registrations' | 'attendance' | 'completion' = 'overview';
+  activeTab: 'overview' | 'analytics' | 'registrations' | 'attendance' | 'completion' = 'overview';
 
   constructor(public apiService: ApiService) {}
 
   metrics: DashboardMetricsDto | null = null;
   summaries: EventSummaryDto[] = [];
+  analytics: AdvancedAnalyticsDto | null = null;
   isLoading = false;
 
   ngOnInit() {
     this.loadDashboard();
   }
 
-  setTab(tab: 'overview' | 'registrations' | 'attendance' | 'completion') {
+  setTab(tab: 'overview' | 'analytics' | 'registrations' | 'attendance' | 'completion') {
     this.activeTab = tab;
     if (tab === 'overview') this.loadDashboard();
+    if (tab === 'analytics') this.loadAdvancedAnalytics();
     if (tab === 'registrations') this.loadRegistrationReports();
     if (tab === 'attendance') this.loadAttendanceReports();
     if (tab === 'completion') this.loadCompletionReports();
+  }
+
+  loadAdvancedAnalytics() {
+    this.isLoading = true;
+    this.apiService.getAdvancedAnalytics().subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.analytics = res.data;
+        }
+        this.isLoading = false;
+      },
+      error: () => this.isLoading = false
+    });
   }
 
   loadDashboard() {

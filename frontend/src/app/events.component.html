@@ -23,6 +23,35 @@
         <button (click)="resetFilters()" class="btn btn-secondary" style="padding: 10px 14px;">Reset</button>
       </div>
     </div>
+
+    <!-- Category Chips -->
+    <div *ngIf="categories.length > 0" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 16px;">
+      <button (click)="keyword = ''; loadEvents()" class="badge" [class.badge-role]="!keyword" style="cursor: pointer; border: none;">
+        All Categories
+      </button>
+      <button *ngFor="let c of categories" (click)="keyword = c.categoryName; loadEvents()" class="badge" [class.badge-role]="keyword === c.categoryName" style="cursor: pointer; border: none;">
+        🏷️ {{ c.categoryName }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Personalized Event Recommendations Banner -->
+  <div *ngIf="recommendedEvents.length > 0" class="glass-panel" style="padding: 24px; border-radius: 18px; margin-bottom: 24px; border: 1px solid rgba(168, 85, 247, 0.3);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="font-size: 1.25rem; font-weight: 800; color: #c084fc;">✨ Recommended For You (Based on Your Interests)</h3>
+      <span class="badge badge-role">Personalized Match</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+      <div *ngFor="let r of recommendedEvents" class="glass-panel" style="padding: 16px; border-radius: 12px; background: rgba(15, 23, 42, 0.4);">
+        <div style="font-weight: 700; color: var(--text-main); margin-bottom: 4px;">{{ r.title }}</div>
+        <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px;">📍 {{ r.venue }} • 🗓️ {{ r.startAtUtc | date:'shortDate' }}</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
+          <span *ngFor="let cat of r.categories" class="badge badge-draft" style="font-size: 0.7rem;">{{ cat }}</span>
+          <span *ngIf="r.isVirtual" class="badge badge-attended" style="font-size: 0.7rem;">💻 Virtual</span>
+        </div>
+        <button (click)="viewDetails(r.eventId)" class="btn btn-secondary btn-sm" style="width: 100%;">View Details</button>
+      </div>
+    </div>
   </div>
 
   <!-- Loading State -->
@@ -126,11 +155,38 @@
         </div>
       </div>
 
-      <div style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button (click)="closeModal()" class="btn btn-secondary">Close</button>
-        <button (click)="registerForEvent(selectedEvent.eventId)" class="btn btn-emerald">
-          Confirm Registration
+      <!-- Feedback & Reviews Section in Modal -->
+      <div *ngIf="feedbackSummary" style="margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">⭐ Attendee Ratings & Reviews</h4>
+          <div *ngIf="feedbackSummary.totalCount > 0" style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.1rem; font-weight: 800; color: #fbbf24;">★ {{ feedbackSummary.averageRating }} / 5</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">({{ feedbackSummary.totalCount }} reviews)</span>
+          </div>
+          <span *ngIf="feedbackSummary.totalCount === 0" style="font-size: 0.8rem; color: var(--text-muted);">No reviews yet</span>
+        </div>
+
+        <div *ngIf="feedbackSummary.recentReviews && feedbackSummary.recentReviews.length > 0" style="display: flex; flex-direction: column; gap: 8px; max-height: 140px; overflow-y: auto;">
+          <div *ngFor="let rev of feedbackSummary.recentReviews" style="background: rgba(15,23,42,0.4); padding: 8px 12px; border-radius: 8px; font-size: 0.8rem;">
+            <div style="display: flex; justify-content: space-between; color: var(--text-dim); margin-bottom: 4px;">
+              <span style="font-weight: 600; color: var(--text-main);">{{ rev.attendeeName }}</span>
+              <span style="color: #fbbf24;">★ {{ rev.rating }} / 5</span>
+            </div>
+            <div *ngIf="rev.comments" style="color: var(--text-muted);">"{{ rev.comments }}"</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: space-between; align-items: center;">
+        <button (click)="downloadCalendar(selectedEvent.eventId)" class="btn btn-secondary btn-sm">
+          📅 Add to Calendar (.ics)
         </button>
+        <div style="display: flex; gap: 12px;">
+          <button (click)="closeModal()" class="btn btn-secondary">Close</button>
+          <button (click)="registerForEvent(selectedEvent.eventId)" class="btn btn-emerald">
+            Confirm Registration
+          </button>
+        </div>
       </div>
     </div>
   </div>

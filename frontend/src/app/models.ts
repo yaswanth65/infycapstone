@@ -346,3 +346,204 @@ export interface NotificationItemDto {
   readAtUtc?: string;
   createdAtUtc: string;
 }
+
+// ============================================================
+// Phase 1 Brownfield Models
+// ============================================================
+
+export interface CategoryResponseDto {
+  categoryId: number;
+  categoryName: string;
+  description?: string;
+  isActive: boolean;
+  createdAtUtc: string;
+}
+
+export interface CategoryCreateDto {
+  categoryName: string;
+  description?: string;
+}
+
+export interface CategoryUpdateDto {
+  categoryId: number;
+  categoryName: string;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface VenueResponseDto {
+  venueId: number;
+  name: string;
+  address?: string;
+  capacity: number;
+  contactDetails?: string;
+  isActive: boolean;
+  createdAtUtc: string;
+}
+
+export interface VenueCreateDto {
+  name: string;
+  address?: string;
+  capacity: number;
+  contactDetails?: string;
+}
+
+export interface VenueUpdateDto {
+  venueId: number;
+  name: string;
+  address?: string;
+  capacity: number;
+  contactDetails?: string;
+  isActive: boolean;
+}
+
+export interface VenueAvailabilityCheckDto {
+  venueId: number;
+  startAtUtc: string;
+  endAtUtc: string;
+  excludeEventId?: number;
+}
+
+export interface VenueAvailabilityResultDto {
+  venueId: number;
+  isAvailable: boolean;
+  message: string;
+}
+
+export interface RecurringEventCreateDto {
+  title: string;
+  description?: string;
+  venue: string;
+  venueId?: number;
+  firstStartAtUtc: string;
+  firstEndAtUtc: string;
+  capacity: number;
+  recurrencePattern: string;
+  recurrenceInterval: number;
+  daysOfWeekMask?: number;
+  recurrenceEndDateUtc: string;
+  categoryIds?: number[];
+  isVirtual: boolean;
+  virtualMeetingUrl?: string;
+}
+
+export interface RecurringEventSeriesDto {
+  seriesId: number;
+  recurrencePattern: string;
+  occurrencesCount: number;
+  createdEventIds: number[];
+}
+
+export interface EventApprovalResponseDto {
+  approvalRequestId: number;
+  eventId: number;
+  eventTitle: string;
+  requestedByUserId: number;
+  requestedByUserName: string;
+  status: string;
+  remarks?: string;
+  requestedAtUtc: string;
+  reviewedAtUtc?: string;
+}
+
+export interface EventApprovalSubmitDto {
+  eventId: number;
+  remarks?: string;
+}
+
+export interface EventApprovalReviewDto {
+  approvalRequestId: number;
+  approve: boolean;
+  remarks?: string;
+}
+
+export interface CapacityAlertConfigDto {
+  eventId: number;
+  thresholdPercentage: number;
+}
+
+export interface CapacityAlertResponseDto {
+  alertConfigId: number;
+  eventId: number;
+  thresholdPercentage: number;
+  isTriggered: boolean;
+  triggeredAtUtc?: string;
+  createdAtUtc: string;
+}
+
+export interface FeedbackCreateDto {
+  eventId: number;
+  rating: number;
+  comments?: string;
+}
+
+export interface FeedbackItemDto {
+  feedbackId: number;
+  eventId: number;
+  attendeeUserId: number;
+  attendeeName: string;
+  rating: number;
+  comments?: string;
+  createdAtUtc: string;
+}
+
+export interface FeedbackSummaryDto {
+  eventId: number;
+  averageRating: number;
+  totalCount: number;
+  starDistribution: Record<number, number>;
+  recentReviews: FeedbackItemDto[];
+}
+
+export interface AttendeeCategoryPreferenceDto {
+  categoryId: number;
+  weight: number;
+}
+
+export interface SetPreferencesDto {
+  preferences: AttendeeCategoryPreferenceDto[];
+}
+
+export interface RecommendedEventDto {
+  eventId: number;
+  title: string;
+  description?: string;
+  venue: string;
+  startAtUtc: string;
+  endAtUtc: string;
+  capacity: number;
+  availableCapacity: number;
+  categories: string[];
+  isVirtual: boolean;
+}
+
+export interface VirtualAccessLinkDto {
+  eventId: number;
+  title: string;
+  isVirtual: boolean;
+  virtualMeetingUrl?: string;
+}
+
+export interface CategoryPopularityDto {
+  categoryName: string;
+  eventCount: number;
+  totalRegistrations: number;
+}
+
+export interface MonthlyTrendDto {
+  monthYear: string;
+  eventsCount: number;
+  registrationsCount: number;
+}
+
+export interface AdvancedAnalyticsDto {
+  totalEvents: number;
+  totalRegistrations: number;
+  totalAttendeesCheckedIn: number;
+  totalCancellations: number;
+  overallAttendanceRatePercentage: number;
+  overallNoShowRatePercentage: number;
+  averageSystemRating: number;
+  categoryBreakdown: CategoryPopularityDto[];
+  monthlyTrends: MonthlyTrendDto[];
+}
