@@ -17,7 +17,7 @@ export class AttendeeComponent implements OnInit {
   isLoading = false;
 
   // Active Tab
-  activeTab: 'registrations' | 'preferences' = 'registrations';
+  activeTab: 'registrations' | 'calendar' | 'preferences' = 'registrations';
 
   // Category Preferences
   allCategories: CategoryResponseDto[] = [];

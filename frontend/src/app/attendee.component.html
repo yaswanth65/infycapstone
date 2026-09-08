@@ -23,6 +23,9 @@
     <button (click)="activeTab = 'registrations'" class="tab-btn" [class.active]="activeTab === 'registrations'">
       📋 My Registrations & History
     </button>
+    <button (click)="activeTab = 'calendar'" class="tab-btn" [class.active]="activeTab === 'calendar'">
+      📅 My Event Calendar (.ics)
+    </button>
     <button (click)="activeTab = 'preferences'" class="tab-btn" [class.active]="activeTab === 'preferences'">
       🎯 Category Interests & Recommendation Preferences
     </button>
@@ -128,6 +131,56 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: CALENDAR & SCHEDULE EXPORT -->
+  <div *ngIf="activeTab === 'calendar'">
+    <div class="glass-panel" style="padding: 28px; border-radius: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px;">📅 Attendee Event Calendar & Schedule</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Export your confirmed event registrations directly into Outlook, Google Calendar, or Apple iCal via standard <code style="color: var(--primary);">.ics</code> format.
+          </p>
+        </div>
+      </div>
+
+      <div *ngIf="activeEvents.length === 0" style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <p style="font-size: 1rem; margin-bottom: 12px;">You don't have any upcoming confirmed event registrations on your calendar.</p>
+        <a routerLink="/events" class="btn btn-primary btn-sm">Explore Upcoming Events</a>
+      </div>
+
+      <div *ngIf="activeEvents.length > 0">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+          <div *ngFor="let ev of activeEvents" class="glass-panel" style="padding: 20px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <span class="badge" [class.badge-confirmed]="ev.status === 'Confirmed'" [class.badge-waiting]="ev.status !== 'Confirmed'">
+                  {{ ev.status }}
+                </span>
+                <span style="font-size: 0.8rem; color: var(--text-dim);">#{{ ev.eventId }}</span>
+              </div>
+              <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">{{ ev.title }}</h4>
+              <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">
+                📍 <strong>Venue:</strong> {{ ev.venue }}
+              </div>
+              <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                ⏰ <strong>Starts:</strong> {{ ev.startAtUtc | date:'fullDate' }} at {{ ev.startAtUtc | date:'shortTime' }}
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06);">
+              <button *ngIf="ev.registrationId && ev.status === 'Confirmed'" (click)="exportCalendar(ev.registrationId)" class="btn btn-primary btn-sm" style="flex: 1;">
+                📅 Export .ics
+              </button>
+              <button *ngIf="ev.registrationId" (click)="getVirtualLink(ev.eventId, ev.title)" class="btn btn-secondary btn-sm">
+                🔗 Virtual Link
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
