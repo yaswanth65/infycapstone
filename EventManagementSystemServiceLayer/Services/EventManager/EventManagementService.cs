@@ -63,9 +63,10 @@ private readonly IEventRepository _events;
                    EndAtUtc = dto.EndAtUtc,
                    RegistrationOpenAtUtc = dto.RegistrationOpenAtUtc,
                    RegistrationCloseAtUtc = dto.RegistrationCloseAtUtc,
-                   Capacity = dto.Capacity,
-                   Status = DraftStatus,
-                   OrganizerUserId = organizerUserId,
+Capacity = dto.Capacity,
+                    Status = DraftStatus,
+                    ApprovalStatus = DraftStatus,
+                    OrganizerUserId = organizerUserId,
                    CreatedAtUtc = now
                };
                var created = await _events.AddAsync(entity, ct);
@@ -279,8 +280,10 @@ public async Task<EventRosterResponseDto?> GetEventRosterAsync(long callerUserId
                RegistrationOpenAtUtc = e.RegistrationOpenAtUtc,
                RegistrationCloseAtUtc = e.RegistrationCloseAtUtc,
                Capacity = e.Capacity,
-               Status = e.Status,
-               OrganizerUserId = e.OrganizerUserId,
+Status = e.Status,
+                ApprovalStatus = e.ApprovalStatus,
+                RejectionReason = e.RejectionReason,
+                OrganizerUserId = e.OrganizerUserId,
                OrganizerDisplayName = e.OrganizerUser?.DisplayName,
                PublishedAtUtc = e.PublishedAtUtc,
                ClosedAtUtc = e.ClosedAtUtc,

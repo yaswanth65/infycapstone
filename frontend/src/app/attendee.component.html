@@ -29,6 +29,9 @@
     <button (click)="activeTab = 'preferences'" class="tab-btn" [class.active]="activeTab === 'preferences'">
       🎯 Category Interests & Recommendation Preferences
     </button>
+    <button (click)="showFeedbackHistory()" class="tab-btn" [class.active]="activeTab === 'feedback'">
+      ⭐ My Feedback History ({{ myFeedback.length }})
+    </button>
   </div>
 
   <!-- TAB 1: REGISTRATIONS & HISTORY -->
@@ -211,6 +214,55 @@
     </button>
   </div>
 
+  <!-- TAB 3: MY FEEDBACK HISTORY -->
+  <div *ngIf="activeTab === 'feedback'">
+    <div class="glass-panel" style="padding: 20px; border-radius: 16px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 4px;">⭐ Your Feedback History</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Every rating and review you have submitted on events you attended.</p>
+        </div>
+        <button (click)="loadMyFeedback()" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <div *ngIf="isLoadingFeedback" style="text-align: center; padding: 40px; color: var(--text-muted);">
+      Loading your feedback history...
+    </div>
+
+    <div *ngIf="!isLoadingFeedback && myFeedback.length === 0" class="glass-panel" style="text-align: center; padding: 40px; border-radius: 16px;">
+      <p style="color: var(--text-muted); font-size: 1rem;">You have not submitted any feedback yet. Go to your past events and rate them to build your history here.</p>
+    </div>
+
+    <div *ngIf="!isLoadingFeedback && myFeedback.length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rating</th>
+            <th>Event</th>
+            <th>Comments</th>
+            <th>Submitted On</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of myFeedback">
+            <td>
+              <span class="badge" [class.badge-confirmed]="f.rating >= 4" [class.badge-waiting]="f.rating === 3" [class.badge-closed]="f.rating <= 2" style="font-size: 0.85rem;">
+                ★ {{ f.rating }} / 5
+              </span>
+            </td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-main);">{{ f.eventTitle }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">Event #{{ f.eventId }}</div>
+            </td>
+            <td style="font-size: 0.88rem; color: var(--text-muted); max-width: 380px;">{{ f.comments || '—' }}</td>
+            <td>{{ f.createdAtUtc | date:'medium' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Virtual Meeting Link Modal -->
   <div *ngIf="virtualMeetingUrl" class="modal-overlay" (click)="virtualMeetingUrl = ''">
     <div class="modal-card" (click)="$event.stopPropagation()" style="max-width: 500px;">
@@ -239,18 +291,20 @@
 
       <div class="form-group">
         <label class="form-label">Star Rating (1 to 5 Stars):</label>
-        <select [(ngModel)]="feedbackRating" class="select-field">
+        <select [(ngModel)]="feedbackRating" class="select-field" [class.select-error]="feedbackRating < 1 || feedbackRating > 5">
           <option [value]="5">⭐⭐⭐⭐⭐ 5 - Excellent Experience</option>
           <option [value]="4">⭐⭐⭐⭐ 4 - Very Good</option>
           <option [value]="3">⭐⭐⭐ 3 - Average</option>
           <option [value]="2">⭐⭐ 2 - Poor</option>
           <option [value]="1">⭐ 1 - Very Bad</option>
         </select>
+        <div *ngIf="feedbackRating < 1 || feedbackRating > 5" class="field-error">Rating must be between 1 and 5</div>
       </div>
 
       <div class="form-group">
         <label class="form-label">Comments & Suggestions:</label>
-        <textarea [(ngModel)]="feedbackComment" class="input-field" rows="3" placeholder="Share your experience or takeaways from this event..."></textarea>
+        <textarea [(ngModel)]="feedbackComment" class="input-field" [class.textarea-error]="feedbackComment && feedbackComment.length > 1000" rows="3" placeholder="Share your experience or takeaways from this event..." maxlength="1000"></textarea>
+        <div *ngIf="feedbackComment && feedbackComment.length > 1000" class="field-error">Comments cannot exceed 1000 characters</div>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">

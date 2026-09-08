@@ -59,12 +59,14 @@
       <form (ngSubmit)="onSubmit()">
         <div class="form-group">
           <label for="emailOrUserName">Email or Username</label>
-          <input type="text" id="emailOrUserName" [(ngModel)]="emailOrUserName" name="emailOrUserName" class="input-field" placeholder="Enter username or email" required>
+          <input type="text" id="emailOrUserName" [(ngModel)]="emailOrUserName" name="emailOrUserName" class="input-field" [class.input-error]="loginEmail.invalid && loginEmail.touched" placeholder="Enter username or email" #loginEmail="ngModel" required>
+          <div *ngIf="loginEmail.invalid && loginEmail.touched" class="field-error">Username or email is required</div>
         </div>
 
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" [(ngModel)]="password" name="password" class="input-field" placeholder="••••••••" required>
+          <input type="password" id="password" [(ngModel)]="password" name="password" class="input-field" [class.input-error]="loginPassword.invalid && loginPassword.touched" placeholder="••••••••" #loginPassword="ngModel" required>
+          <div *ngIf="loginPassword.invalid && loginPassword.touched" class="field-error">Password is required</div>
         </div>
 
         <button type="submit" [disabled]="isLoading" class="btn btn-primary" style="width: 100%; margin-top: 12px; padding: 12px;">
@@ -79,27 +81,40 @@
       <form (ngSubmit)="onSignupSubmit()">
         <div class="form-group">
           <label for="signupEmail">Email Address *</label>
-          <input type="email" id="signupEmail" [(ngModel)]="signupModel.email" name="email" class="input-field" placeholder="john@example.com" required>
+          <input type="email" id="signupEmail" [(ngModel)]="signupModel.email" name="email" class="input-field" [class.input-error]="signupEmail.invalid && signupEmail.touched" placeholder="john@example.com" #signupEmail="ngModel" required email>
+          <div *ngIf="signupEmail.invalid && signupEmail.touched && signupEmail.errors?.['required']" class="field-error">Email address is required</div>
+          <div *ngIf="signupEmail.invalid && signupEmail.touched && signupEmail.errors?.['email']" class="field-error">Please enter a valid email address</div>
         </div>
 
         <div class="form-group">
           <label for="signupUserName">Username *</label>
-          <input type="text" id="signupUserName" [(ngModel)]="signupModel.userName" name="userName" class="input-field" placeholder="johndoe" required>
+          <input type="text" id="signupUserName" [(ngModel)]="signupModel.userName" name="userName" class="input-field" [class.input-error]="signupUserName.invalid && signupUserName.touched" placeholder="johndoe" #signupUserName="ngModel" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+">
+          <div *ngIf="signupUserName.invalid && signupUserName.touched && signupUserName.errors?.['required']" class="field-error">Username is required</div>
+          <div *ngIf="signupUserName.invalid && signupUserName.touched && signupUserName.errors?.['minlength']" class="field-error">Username must be at least 3 characters</div>
+          <div *ngIf="signupUserName.invalid && signupUserName.touched && signupUserName.errors?.['maxlength']" class="field-error">Username cannot exceed 30 characters</div>
+          <div *ngIf="signupUserName.invalid && signupUserName.touched && signupUserName.errors?.['pattern']" class="field-error">Only letters, numbers, and underscores allowed</div>
         </div>
 
         <div class="form-group">
           <label for="signupDisplayName">Display Name *</label>
-          <input type="text" id="signupDisplayName" [(ngModel)]="signupModel.displayName" name="displayName" class="input-field" placeholder="John Doe" required>
+          <input type="text" id="signupDisplayName" [(ngModel)]="signupModel.displayName" name="displayName" class="input-field" [class.input-error]="signupDisplayName.invalid && signupDisplayName.touched" placeholder="John Doe" #signupDisplayName="ngModel" required minlength="2" maxlength="100">
+          <div *ngIf="signupDisplayName.invalid && signupDisplayName.touched && signupDisplayName.errors?.['required']" class="field-error">Display name is required</div>
+          <div *ngIf="signupDisplayName.invalid && signupDisplayName.touched && signupDisplayName.errors?.['minlength']" class="field-error">Display name must be at least 2 characters</div>
+          <div *ngIf="signupDisplayName.invalid && signupDisplayName.touched && signupDisplayName.errors?.['maxlength']" class="field-error">Display name cannot exceed 100 characters</div>
         </div>
 
         <div class="form-group">
           <label for="signupPhone">Phone Number</label>
-          <input type="text" id="signupPhone" [(ngModel)]="signupModel.phoneNumber" name="phoneNumber" class="input-field" placeholder="9998887770">
+          <input type="text" id="signupPhone" [(ngModel)]="signupModel.phoneNumber" name="phoneNumber" class="input-field" [class.input-error]="(signupPhone.dirty || signupPhone.touched) && signupModel.phoneNumber && !isValidPhone(signupModel.phoneNumber)" placeholder="9998887770" #signupPhone="ngModel" maxlength="15">
+          <div *ngIf="(signupPhone.dirty || signupPhone.touched) && signupModel.phoneNumber && !isValidPhone(signupModel.phoneNumber)" class="field-error">Enter a valid phone number (7-15 digits)</div>
         </div>
 
         <div class="form-group">
           <label for="signupPassword">Password *</label>
-          <input type="password" id="signupPassword" [(ngModel)]="signupModel.password" name="password" class="input-field" placeholder="Create password" required>
+          <input type="password" id="signupPassword" [(ngModel)]="signupModel.password" name="password" class="input-field" [class.input-error]="signupPassword.invalid && signupPassword.touched" placeholder="Create password" #signupPassword="ngModel" required minlength="8">
+          <div *ngIf="signupPassword.invalid && signupPassword.touched && signupPassword.errors?.['required']" class="field-error">Password is required</div>
+          <div *ngIf="signupPassword.invalid && signupPassword.touched && signupPassword.errors?.['minlength']" class="field-error">Password must be at least 8 characters</div>
+          <div *ngIf="signupPassword.touched && signupModel.password && !isStrongPassword(signupModel.password)" class="field-error">Must include uppercase, lowercase, number, and special character (@$!%*?&amp;#)</div>
         </div>
 
         <button type="submit" [disabled]="isLoading" class="btn btn-emerald" style="width: 100%; margin-top: 12px; padding: 12px;">

@@ -108,29 +108,40 @@
     <form (ngSubmit)="createUserSubmit()">
       <div class="form-group">
         <label for="adminEmail">Email Address *</label>
-        <input type="email" id="adminEmail" [(ngModel)]="userModel.email" name="email" class="input-field" placeholder="user@company.com" required>
+        <input type="email" id="adminEmail" [(ngModel)]="userModel.email" name="email" class="input-field" [class.input-error]="adminEmail.invalid && adminEmail.touched" placeholder="user@company.com" #adminEmail="ngModel" required email>
+        <div *ngIf="adminEmail.invalid && adminEmail.touched && adminEmail.errors?.['required']" class="field-error">Email address is required</div>
+        <div *ngIf="adminEmail.invalid && adminEmail.touched && adminEmail.errors?.['email']" class="field-error">Please enter a valid email address</div>
       </div>
 
       <div class="form-group">
         <label for="adminUsername">Username *</label>
-        <input type="text" id="adminUsername" [(ngModel)]="userModel.userName" name="userName" class="input-field" placeholder="johndoe" required>
+        <input type="text" id="adminUsername" [(ngModel)]="userModel.userName" name="userName" class="input-field" [class.input-error]="adminUsername.invalid && adminUsername.touched" placeholder="johndoe" #adminUsername="ngModel" required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+">
+        <div *ngIf="adminUsername.invalid && adminUsername.touched && adminUsername.errors?.['required']" class="field-error">Username is required</div>
+        <div *ngIf="adminUsername.invalid && adminUsername.touched && adminUsername.errors?.['minlength']" class="field-error">Username must be at least 3 characters</div>
+        <div *ngIf="adminUsername.invalid && adminUsername.touched && adminUsername.errors?.['maxlength']" class="field-error">Username cannot exceed 30 characters</div>
+        <div *ngIf="adminUsername.invalid && adminUsername.touched && adminUsername.errors?.['pattern']" class="field-error">Only letters, numbers, and underscores allowed</div>
       </div>
 
       <div class="form-group">
         <label for="adminDisplayName">Display Name *</label>
-        <input type="text" id="adminDisplayName" [(ngModel)]="userModel.displayName" name="displayName" class="input-field" placeholder="John Doe" required>
+        <input type="text" id="adminDisplayName" [(ngModel)]="userModel.displayName" name="displayName" class="input-field" [class.input-error]="adminDisplayName.invalid && adminDisplayName.touched" placeholder="John Doe" #adminDisplayName="ngModel" required minlength="2" maxlength="100">
+        <div *ngIf="adminDisplayName.invalid && adminDisplayName.touched && adminDisplayName.errors?.['required']" class="field-error">Display name is required</div>
+        <div *ngIf="adminDisplayName.invalid && adminDisplayName.touched && adminDisplayName.errors?.['minlength']" class="field-error">Display name must be at least 2 characters</div>
+        <div *ngIf="adminDisplayName.invalid && adminDisplayName.touched && adminDisplayName.errors?.['maxlength']" class="field-error">Display name cannot exceed 100 characters</div>
       </div>
 
       <div class="form-group">
         <label for="adminPhone">Phone Number</label>
-        <input type="text" id="adminPhone" [(ngModel)]="userModel.phoneNumber" name="phoneNumber" class="input-field" placeholder="9998887770">
+        <input type="text" id="adminPhone" [(ngModel)]="userModel.phoneNumber" name="phoneNumber" class="input-field" [class.input-error]="(adminPhone.dirty || adminPhone.touched) && userModel.phoneNumber && !isValidPhone(userModel.phoneNumber)" placeholder="9998887770" #adminPhone="ngModel" maxlength="15">
+        <div *ngIf="(adminPhone.dirty || adminPhone.touched) && userModel.phoneNumber && !isValidPhone(userModel.phoneNumber)" class="field-error">Enter a valid phone number (7-15 digits)</div>
       </div>
 
       <div class="form-group">
         <label for="adminRole">Assign System Role *</label>
-        <select id="adminRole" [(ngModel)]="userModel.roleId" name="roleId" class="select-field" required>
+        <select id="adminRole" [(ngModel)]="userModel.roleId" name="roleId" class="select-field" [class.select-error]="adminRole.invalid && adminRole.touched" #adminRole="ngModel" required>
           <option *ngFor="let r of roles" [value]="r.roleId">{{ r.roleName }}</option>
         </select>
+        <div *ngIf="adminRole.invalid && adminRole.touched" class="field-error">Please assign a system role</div>
       </div>
 
       <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
@@ -145,7 +156,8 @@
     <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-end; flex-wrap: wrap;">
       <div class="form-group" style="margin:0; width: 180px;">
         <label>Actor User ID</label>
-        <input type="number" [(ngModel)]="filterActorUserId" class="input-field" placeholder="e.g. 1">
+        <input type="number" [(ngModel)]="filterActorUserId" class="input-field" [class.input-error]="filterActorUserId !== null && filterActorUserId !== undefined && filterActorUserId < 0" placeholder="e.g. 1">
+        <div *ngIf="filterActorUserId !== null && filterActorUserId !== undefined && filterActorUserId < 0" class="field-error">ID cannot be negative</div>
       </div>
       <div class="form-group" style="margin:0; width: 200px;">
         <label>Action Type</label>
@@ -239,11 +251,15 @@
         <form (ngSubmit)="createCategory()">
           <div class="form-group">
             <label>Category Name *</label>
-            <input type="text" [(ngModel)]="newCategoryName" name="catName" class="input-field" placeholder="e.g. AI & Machine Learning" required>
+            <input type="text" [(ngModel)]="newCategoryName" name="catName" class="input-field" [class.input-error]="catNameField.invalid && catNameField.touched" placeholder="e.g. AI & Machine Learning" #catNameField="ngModel" required minlength="2" maxlength="100">
+            <div *ngIf="catNameField.invalid && catNameField.touched && catNameField.errors?.['required']" class="field-error">Category name is required</div>
+            <div *ngIf="catNameField.invalid && catNameField.touched && catNameField.errors?.['minlength']" class="field-error">Category name must be at least 2 characters</div>
+            <div *ngIf="catNameField.invalid && catNameField.touched && catNameField.errors?.['maxlength']" class="field-error">Category name cannot exceed 100 characters</div>
           </div>
           <div class="form-group">
             <label>Description</label>
-            <textarea [(ngModel)]="newCategoryDesc" name="catDesc" class="input-field" rows="3" placeholder="Brief description of this category"></textarea>
+            <textarea [(ngModel)]="newCategoryDesc" name="catDesc" class="input-field" rows="3" placeholder="Brief description of this category" maxlength="500"></textarea>
+            <div *ngIf="newCategoryDesc.length > 500" class="field-error">Description cannot exceed 500 characters</div>
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%;">Create Category</button>
         </form>
@@ -300,19 +316,28 @@
         <form (ngSubmit)="createVenue()">
           <div class="form-group">
             <label>Venue Name *</label>
-            <input type="text" [(ngModel)]="newVenueName" name="vName" class="input-field" placeholder="e.g. Grand Convention Center" required>
+            <input type="text" [(ngModel)]="newVenueName" name="vName" class="input-field" [class.input-error]="vNameField.invalid && vNameField.touched" placeholder="e.g. Grand Convention Center" #vNameField="ngModel" required minlength="2" maxlength="150">
+            <div *ngIf="vNameField.invalid && vNameField.touched && vNameField.errors?.['required']" class="field-error">Venue name is required</div>
+            <div *ngIf="vNameField.invalid && vNameField.touched && vNameField.errors?.['minlength']" class="field-error">Venue name must be at least 2 characters</div>
+            <div *ngIf="vNameField.invalid && vNameField.touched && vNameField.errors?.['maxlength']" class="field-error">Venue name cannot exceed 150 characters</div>
           </div>
           <div class="form-group">
             <label>Address *</label>
-            <input type="text" [(ngModel)]="newVenueAddress" name="vAddress" class="input-field" placeholder="e.g. 100 Main St, Tech City" required>
+            <input type="text" [(ngModel)]="newVenueAddress" name="vAddress" class="input-field" [class.input-error]="vAddressField.invalid && vAddressField.touched" placeholder="e.g. 100 Main St, Tech City" #vAddressField="ngModel" required minlength="5" maxlength="250">
+            <div *ngIf="vAddressField.invalid && vAddressField.touched && vAddressField.errors?.['required']" class="field-error">Address is required</div>
+            <div *ngIf="vAddressField.invalid && vAddressField.touched && vAddressField.errors?.['minlength']" class="field-error">Address must be at least 5 characters</div>
+            <div *ngIf="vAddressField.invalid && vAddressField.touched && vAddressField.errors?.['maxlength']" class="field-error">Address cannot exceed 250 characters</div>
           </div>
           <div class="form-group">
             <label>Maximum Capacity *</label>
-            <input type="number" [(ngModel)]="newVenueCapacity" name="vCapacity" class="input-field" min="1" required>
+            <input type="number" [(ngModel)]="newVenueCapacity" name="vCapacity" class="input-field" [class.input-error]="vCapacityField.invalid && vCapacityField.touched" min="1" #vCapacityField="ngModel" required>
+            <div *ngIf="vCapacityField.invalid && vCapacityField.touched && vCapacityField.errors?.['required']" class="field-error">Maximum capacity is required</div>
+            <div *ngIf="vCapacityField.invalid && vCapacityField.touched && vCapacityField.errors?.['min']" class="field-error">Capacity must be at least 1</div>
           </div>
           <div class="form-group">
             <label>Contact Details</label>
-            <input type="text" [(ngModel)]="newVenueContact" name="vContact" class="input-field" placeholder="e.g. venue-ops@example.com">
+            <input type="text" [(ngModel)]="newVenueContact" name="vContact" class="input-field" placeholder="e.g. venue-ops@example.com" maxlength="150">
+            <div *ngIf="newVenueContact.length > 150" class="field-error">Contact details cannot exceed 150 characters</div>
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%;">Save Venue</button>
         </form>

@@ -45,6 +45,7 @@ namespace EventManagementSystemServiceLayer.DTOs.Brownfield
     public record FeedbackCreateDto(long EventId, int Rating, string? Comments);
     public record FeedbackItemDto(long FeedbackId, long EventId, long AttendeeUserId, string AttendeeName, int Rating, string? Comments, DateTime CreatedAtUtc);
     public record FeedbackSummaryDto(long EventId, double AverageRating, int TotalCount, Dictionary<int, int> StarDistribution, List<FeedbackItemDto> RecentReviews);
+    public record FeedbackHistoryItemDto(long FeedbackId, long EventId, string EventTitle, int Rating, string? Comments, DateTime CreatedAtUtc);
 
     // Attendee Recommendations & Preferences
     public record AttendeeCategoryPreferenceDto(int CategoryId, decimal Weight);

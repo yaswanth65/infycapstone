@@ -38,6 +38,9 @@
     <button (click)="setTab('attendance')" class="tab-btn" [class.active]="activeTab === 'attendance'">
       ⏱️ Attendance Tracking & Audit
     </button>
+    <button (click)="setTab('feedback')" class="tab-btn" [class.active]="activeTab === 'feedback'">
+      ⭐ Feedback History ({{ myFeedback.length }})
+    </button>
   </div>
 
   <!-- TAB 1: MANAGED EVENTS LIST -->
@@ -91,11 +94,20 @@
               <span class="badge" [class.badge-draft]="ev.status === 'Draft'" [class.badge-published]="ev.status === 'Published'" [class.badge-closed]="ev.status === 'Closed' || ev.status === 'Cancelled'">
                 {{ ev.status }}
               </span>
+              <div style="margin-top: 4px;">
+                <span class="badge" style="font-size: 0.7rem;"
+                      [class.badge-draft]="!ev.approvalStatus || ev.approvalStatus === 'Draft'"
+                      [class.badge-waiting]="ev.approvalStatus === 'Submitted'"
+                      [class.badge-confirmed]="ev.approvalStatus === 'Approved'"
+                      [class.badge-closed]="ev.approvalStatus === 'Rejected'">
+                  {{ !ev.approvalStatus || ev.approvalStatus === 'Draft' ? 'Approval: Not Submitted' : (ev.approvalStatus === 'Submitted' ? 'Approval: Pending' : (ev.approvalStatus === 'Approved' ? 'Approval: Approved' : 'Approval: Rejected')) }}
+                </span>
+              </div>
             </td>
             <td>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button *ngIf="ev.status === 'Draft'" (click)="openEditForm(ev)" class="btn btn-secondary btn-sm">Edit</button>
-                <button *ngIf="ev.status === 'Draft'" (click)="submitForApproval(ev.eventId)" class="btn btn-sm" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4);">
+                <button *ngIf="ev.status === 'Draft' && ev.approvalStatus !== 'Submitted' && ev.approvalStatus !== 'Approved'" (click)="submitForApproval(ev.eventId)" class="btn btn-sm" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4);">
                   🛡️ Approval
                 </button>
                 <button (click)="openCapacityAlertModal(ev.eventId)" class="btn btn-secondary btn-sm">
@@ -118,10 +130,13 @@
       {{ isEditing ? 'Edit Event #' + editingEventId : 'Create New Event' }}
     </h3>
 
-    <form (ngSubmit)="saveEvent()">
+    <form (ngSubmit)="saveEvent()" #eventForm="ngForm">
       <div class="form-group">
         <label for="eventTitle">Event Title *</label>
-        <input type="text" id="eventTitle" [(ngModel)]="formModel.title" name="title" class="input-field" placeholder="e.g. AI & Cloud Architecture Summit 2026" required>
+        <input type="text" id="eventTitle" [(ngModel)]="formModel.title" name="title" class="input-field" [class.input-error]="eventTitle.invalid && eventTitle.touched && eventTitle.dirty" placeholder="e.g. AI & Cloud Architecture Summit 2026" #eventTitle="ngModel" required minlength="3" maxlength="200">
+        <div *ngIf="eventTitle.invalid && eventTitle.touched && eventTitle.dirty && eventTitle.errors?.['required']" class="field-error">Event title is required</div>
+        <div *ngIf="eventTitle.invalid && eventTitle.touched && eventTitle.dirty && eventTitle.errors?.['minlength']" class="field-error">Event title must be at least 3 characters</div>
+        <div *ngIf="eventTitle.invalid && eventTitle.touched && eventTitle.dirty && eventTitle.errors?.['maxlength']" class="field-error">Event title cannot exceed 200 characters</div>
       </div>
 
       <div class="form-group">
@@ -132,7 +147,9 @@
             <option *ngFor="let v of venues" [value]="v.venueId">{{ v.name }} (Cap: {{ v.capacity }})</option>
           </select>
         </div>
-        <input type="text" id="eventVenue" [(ngModel)]="formModel.venue" name="venue" class="input-field" placeholder="e.g. Auditorium A or Online Teams" required>
+        <input type="text" id="eventVenue" [(ngModel)]="formModel.venue" name="venue" class="input-field" [class.input-error]="eventVenue.invalid && eventVenue.touched && eventVenue.dirty" placeholder="e.g. Auditorium A or Online Teams" #eventVenue="ngModel" required minlength="2">
+        <div *ngIf="eventVenue.invalid && eventVenue.touched && eventVenue.dirty && eventVenue.errors?.['required']" class="field-error">Venue / Location is required</div>
+        <div *ngIf="eventVenue.invalid && eventVenue.touched && eventVenue.dirty && eventVenue.errors?.['minlength']" class="field-error">Venue / Location must be at least 2 characters</div>
         <div *ngIf="venueCheckMessage" style="font-size: 0.8rem; margin-top: 4px;" [style.color]="venueCheckAvailable ? '#34d399' : '#fb7185'">
           {{ venueCheckMessage }}
         </div>
@@ -141,22 +158,28 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <div class="form-group">
           <label for="startAtUtc">Start Date & Time (UTC) *</label>
-          <input type="datetime-local" id="startAtUtc" [(ngModel)]="formModel.startAtUtc" name="startAtUtc" class="input-field" required>
+          <input type="datetime-local" id="startAtUtc" [(ngModel)]="formModel.startAtUtc" name="startAtUtc" class="input-field" [class.input-error]="eventStart.invalid && eventStart.touched && eventStart.dirty" #eventStart="ngModel" required>
+          <div *ngIf="eventStart.invalid && eventStart.touched && eventStart.dirty" class="field-error">Start date & time is required</div>
         </div>
         <div class="form-group">
           <label for="endAtUtc">End Date & Time (UTC) *</label>
-          <input type="datetime-local" id="endAtUtc" [(ngModel)]="formModel.endAtUtc" name="endAtUtc" class="input-field" required>
+          <input type="datetime-local" id="endAtUtc" [(ngModel)]="formModel.endAtUtc" name="endAtUtc" class="input-field" [class.input-error]="(eventEnd.invalid && eventEnd.touched && eventEnd.dirty) || (formModel.endAtUtc && formModel.startAtUtc && endBeforeStart(formModel.endAtUtc, formModel.startAtUtc))" #eventEnd="ngModel" required>
+          <div *ngIf="eventEnd.invalid && eventEnd.touched && eventEnd.dirty" class="field-error">End date & time is required</div>
+          <div *ngIf="eventEnd.touched && eventEnd.dirty && formModel.endAtUtc && formModel.startAtUtc && endBeforeStart(formModel.endAtUtc, formModel.startAtUtc)" class="field-error">End date must be strictly after start date</div>
         </div>
       </div>
 
       <div class="form-group">
         <label for="eventCapacity">Event Capacity (Seats) *</label>
-        <input type="number" id="eventCapacity" [(ngModel)]="formModel.capacity" name="capacity" class="input-field" min="1" required>
+        <input type="number" id="eventCapacity" [(ngModel)]="formModel.capacity" name="capacity" class="input-field" [class.input-error]="eventCapacity.invalid && eventCapacity.touched && eventCapacity.dirty" min="1" #eventCapacity="ngModel" required>
+        <div *ngIf="eventCapacity.invalid && eventCapacity.touched && eventCapacity.dirty && eventCapacity.errors?.['required']" class="field-error">Event capacity is required</div>
+        <div *ngIf="eventCapacity.invalid && eventCapacity.touched && eventCapacity.dirty && eventCapacity.errors?.['min']" class="field-error">Capacity must be at least 1 seat</div>
       </div>
 
       <div class="form-group">
         <label for="eventDesc">Description</label>
-        <textarea id="eventDesc" [(ngModel)]="formModel.description" name="description" class="textarea-field" placeholder="Provide full agenda, speakers, and topics..."></textarea>
+        <textarea id="eventDesc" [(ngModel)]="formModel.description" name="description" class="textarea-field" placeholder="Provide full agenda, speakers, and topics..." maxlength="2000"></textarea>
+        <div *ngIf="formModel.description && formModel.description.length > 2000" class="field-error">Description cannot exceed 2000 characters</div>
       </div>
 
       <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
@@ -177,10 +200,13 @@
       Automatically generate multiple event occurrences according to daily, weekly, or monthly repetition rules.
     </p>
 
-    <form (ngSubmit)="saveRecurringSeries()">
+    <form (ngSubmit)="saveRecurringSeries()" #recurForm="ngForm">
       <div class="form-group">
         <label>Series Title *</label>
-        <input type="text" [(ngModel)]="recurringModel.title" name="recTitle" class="input-field" placeholder="e.g. Weekly Cloud Architecture Sync" required>
+        <input type="text" [(ngModel)]="recurringModel.title" name="recTitle" class="input-field" [class.input-error]="recTitle.invalid && recTitle.touched && recTitle.dirty" placeholder="e.g. Weekly Cloud Architecture Sync" #recTitle="ngModel" required minlength="3" maxlength="200">
+        <div *ngIf="recTitle.invalid && recTitle.touched && recTitle.dirty && recTitle.errors?.['required']" class="field-error">Series title is required</div>
+        <div *ngIf="recTitle.invalid && recTitle.touched && recTitle.dirty && recTitle.errors?.['minlength']" class="field-error">Series title must be at least 3 characters</div>
+        <div *ngIf="recTitle.invalid && recTitle.touched && recTitle.dirty && recTitle.errors?.['maxlength']" class="field-error">Series title cannot exceed 200 characters</div>
       </div>
 
       <div class="form-group">
@@ -191,17 +217,22 @@
             <option *ngFor="let v of venues" [value]="v.venueId">{{ v.name }}</option>
           </select>
         </div>
-        <input type="text" [(ngModel)]="recurringModel.venue" name="recVenue" class="input-field" placeholder="e.g. Innovation Hall" required>
+        <input type="text" [(ngModel)]="recurringModel.venue" name="recVenue" class="input-field" [class.input-error]="recVenue.invalid && recVenue.touched && recVenue.dirty" placeholder="e.g. Innovation Hall" #recVenue="ngModel" required minlength="2">
+        <div *ngIf="recVenue.invalid && recVenue.touched && recVenue.dirty && recVenue.errors?.['required']" class="field-error">Venue / Location is required</div>
+        <div *ngIf="recVenue.invalid && recVenue.touched && recVenue.dirty && recVenue.errors?.['minlength']" class="field-error">Venue / Location must be at least 2 characters</div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <div class="form-group">
           <label>First Occurrence Start (UTC) *</label>
-          <input type="datetime-local" [(ngModel)]="recurringModel.firstStartAtUtc" name="recStart" class="input-field" required>
+          <input type="datetime-local" [(ngModel)]="recurringModel.firstStartAtUtc" name="recStart" class="input-field" [class.input-error]="recStart.invalid && recStart.touched && recStart.dirty" #recStart="ngModel" required>
+          <div *ngIf="recStart.invalid && recStart.touched && recStart.dirty" class="field-error">First start date & time is required</div>
         </div>
         <div class="form-group">
           <label>First Occurrence End (UTC) *</label>
-          <input type="datetime-local" [(ngModel)]="recurringModel.firstEndAtUtc" name="recEnd" class="input-field" required>
+          <input type="datetime-local" [(ngModel)]="recurringModel.firstEndAtUtc" name="recEnd" class="input-field" [class.input-error]="(recEnd.invalid && recEnd.touched && recEnd.dirty) || (recurringModel.firstEndAtUtc && recurringModel.firstStartAtUtc && endBeforeStart(recurringModel.firstEndAtUtc, recurringModel.firstStartAtUtc))" #recEnd="ngModel" required>
+          <div *ngIf="recEnd.invalid && recEnd.touched && recEnd.dirty" class="field-error">First end date & time is required</div>
+          <div *ngIf="recurringModel.firstEndAtUtc && recurringModel.firstStartAtUtc && endBeforeStart(recurringModel.firstEndAtUtc, recurringModel.firstStartAtUtc)" class="field-error">End date must be strictly after start date</div>
         </div>
       </div>
 
@@ -216,17 +247,23 @@
         </div>
         <div class="form-group">
           <label>Interval (e.g. every 1 week) *</label>
-          <input type="number" [(ngModel)]="recurringModel.recurrenceInterval" name="recInterval" class="input-field" min="1" required>
+          <input type="number" [(ngModel)]="recurringModel.recurrenceInterval" name="recInterval" class="input-field" [class.input-error]="recInterval.invalid && recInterval.touched && recInterval.dirty" min="1" #recInterval="ngModel" required>
+          <div *ngIf="recInterval.invalid && recInterval.touched && recInterval.dirty && recInterval.errors?.['required']" class="field-error">Interval is required</div>
+          <div *ngIf="recInterval.invalid && recInterval.touched && recInterval.dirty && recInterval.errors?.['min']" class="field-error">Interval must be at least 1</div>
         </div>
         <div class="form-group">
           <label>Capacity per Event *</label>
-          <input type="number" [(ngModel)]="recurringModel.capacity" name="recCapacity" class="input-field" min="1" required>
+          <input type="number" [(ngModel)]="recurringModel.capacity" name="recCapacity" class="input-field" [class.input-error]="recCapacity.invalid && recCapacity.touched && recCapacity.dirty" min="1" #recCapacity="ngModel" required>
+          <div *ngIf="recCapacity.invalid && recCapacity.touched && recCapacity.dirty && recCapacity.errors?.['required']" class="field-error">Capacity is required</div>
+          <div *ngIf="recCapacity.invalid && recCapacity.touched && recCapacity.dirty && recCapacity.errors?.['min']" class="field-error">Capacity must be at least 1</div>
         </div>
       </div>
 
       <div class="form-group">
         <label>Recurrence End Date (UTC) *</label>
-        <input type="datetime-local" [(ngModel)]="recurringModel.recurrenceEndDateUtc" name="recSeriesEnd" class="input-field" required>
+        <input type="datetime-local" [(ngModel)]="recurringModel.recurrenceEndDateUtc" name="recSeriesEnd" class="input-field" [class.input-error]="(recSeriesEnd.invalid && recSeriesEnd.touched && recSeriesEnd.dirty) || (recurringModel.recurrenceEndDateUtc && recurringModel.firstStartAtUtc && endBeforeStart(recurringModel.recurrenceEndDateUtc, recurringModel.firstStartAtUtc))" #recSeriesEnd="ngModel" required>
+        <div *ngIf="recSeriesEnd.invalid && recSeriesEnd.touched && recSeriesEnd.dirty" class="field-error">Recurrence end date is required</div>
+        <div *ngIf="recurringModel.recurrenceEndDateUtc && recurringModel.firstStartAtUtc && endBeforeStart(recurringModel.recurrenceEndDateUtc, recurringModel.firstStartAtUtc)" class="field-error">Recurrence end date must be after first occurrence start</div>
       </div>
 
       <!-- Virtual Settings -->
@@ -237,13 +274,16 @@
         </label>
         <div *ngIf="recurringModel.isVirtual" class="form-group" style="margin-top: 12px;">
           <label>Virtual Meeting URL</label>
-          <input type="url" [(ngModel)]="recurringModel.virtualMeetingUrl" name="recUrl" class="input-field" placeholder="https://teams.microsoft.com/meet/...">
+          <input type="url" [(ngModel)]="recurringModel.virtualMeetingUrl" name="recUrl" class="input-field" [class.input-error]="recUrl.invalid && recUrl.touched && recUrl.dirty" placeholder="https://teams.microsoft.com/meet/..." #recUrl="ngModel" pattern="https?://.+">
+          <div *ngIf="recUrl.invalid && recUrl.touched && recUrl.dirty && recUrl.errors?.['required']" class="field-error">Virtual meeting URL is required for virtual events</div>
+          <div *ngIf="recUrl.invalid && recUrl.touched && recUrl.dirty && recUrl.errors?.['pattern']" class="field-error">Please enter a valid URL starting with http:// or https://</div>
         </div>
       </div>
 
       <div class="form-group">
         <label>Description</label>
-        <textarea [(ngModel)]="recurringModel.description" name="recDesc" class="textarea-field" placeholder="Brief outline of recurring series..."></textarea>
+        <textarea [(ngModel)]="recurringModel.description" name="recDesc" class="textarea-field" placeholder="Brief outline of recurring series..." maxlength="2000"></textarea>
+        <div *ngIf="recurringModel.description && recurringModel.description.length > 2000" class="field-error">Description cannot exceed 2000 characters</div>
       </div>
 
       <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
@@ -281,9 +321,12 @@
 
       <div class="form-group">
         <label>Set Threshold Percentage (e.g. 75, 90)</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="number" [(ngModel)]="alertThreshold" min="1" max="100" class="input-field" style="flex: 1;" placeholder="80">
-          <button (click)="saveCapacityAlert()" class="btn btn-primary">Add Threshold</button>
+        <div style="display: flex; gap: 8px; flex-direction: column;">
+          <div style="display: flex; gap: 8px;">
+            <input type="number" [(ngModel)]="alertThreshold" min="1" max="100" class="input-field" [class.input-error]="alertThreshold < 1 || alertThreshold > 100" style="flex: 1;" placeholder="80">
+            <button (click)="saveCapacityAlert()" class="btn btn-primary">Add Threshold</button>
+          </div>
+          <div *ngIf="alertThreshold < 1 || alertThreshold > 100" class="field-error">Threshold must be between 1 and 100</div>
         </div>
       </div>
 
@@ -402,13 +445,16 @@
       <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
         <div class="form-group" style="margin:0; flex:1; min-width:200px;">
           <label>Select Event</label>
-          <select [(ngModel)]="onBehalfEventId" class="select-field">
+          <select [(ngModel)]="onBehalfEventId" class="select-field" [class.select-error]="onBehalfEventId === 0">
+            <option [ngValue]="0" disabled>-- Select Event --</option>
             <option *ngFor="let ev of events" [value]="ev.eventId">{{ ev.title }}</option>
           </select>
+          <div *ngIf="onBehalfEventId === 0" class="field-error">Please select an event</div>
         </div>
         <div class="form-group" style="margin:0; flex:1; min-width:160px;">
           <label>Attendee User ID</label>
-          <input type="number" [(ngModel)]="onBehalfAttendeeUserId" class="input-field" placeholder="e.g. 4">
+          <input type="number" [(ngModel)]="onBehalfAttendeeUserId" class="input-field" [class.input-error]="onBehalfAttendeeUserId !== 0 && !isValidUserId(onBehalfAttendeeUserId)" placeholder="e.g. 4">
+          <div *ngIf="onBehalfAttendeeUserId !== 0 && !isValidUserId(onBehalfAttendeeUserId)" class="field-error">Enter a valid positive user ID</div>
         </div>
         <button (click)="submitOnBehalfRequest()" class="btn btn-emerald">Submit Request</button>
       </div>
@@ -603,7 +649,9 @@
                       </div>
                       <div>
                         <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Audit Correction Reason *</label>
-                        <input type="text" [(ngModel)]="correctionReason" class="input-field" placeholder="e.g. Arrived late due to travel delay..." style="padding: 8px; font-size: 0.85rem;">
+                        <input type="text" [(ngModel)]="correctionReason" class="input-field" [class.input-error]="(correctionReason === '' || correctionReason === null) && correctingRegistrationId !== null" placeholder="e.g. Arrived late due to travel delay..." style="padding: 8px; font-size: 0.85rem;">
+                        <div *ngIf="!correctionReason && correctingRegistrationId !== null" class="field-error" style="font-size: 0.7rem;">Correction reason is required</div>
+                        <div *ngIf="correctionReason && correctingRegistrationId !== null && correctionReason.trim().length < 10" class="field-error" style="font-size: 0.7rem;">Provide a more detailed reason (min 10 characters)</div>
                       </div>
                     </div>
 
@@ -626,6 +674,55 @@
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- TAB 6: FEEDBACK HISTORY -->
+  <div *ngIf="activeTab === 'feedback'">
+    <div class="glass-panel" style="padding: 20px; border-radius: 16px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 4px;">⭐ Your Feedback History</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Every rating and review you have submitted on attended events.</p>
+        </div>
+        <button (click)="loadMyFeedback()" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <div *ngIf="isLoadingFeedback" style="text-align: center; padding: 40px; color: var(--text-muted);">
+      Loading your feedback history...
+    </div>
+
+    <div *ngIf="!isLoadingFeedback && myFeedback.length === 0" class="glass-panel" style="text-align: center; padding: 40px; border-radius: 16px;">
+      <p style="color: var(--text-muted); font-size: 1rem;">You have not submitted any feedback yet. Attend a past event and rate it to build your history here.</p>
+    </div>
+
+    <div *ngIf="!isLoadingFeedback && myFeedback.length > 0" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rating</th>
+            <th>Event</th>
+            <th>Comments</th>
+            <th>Submitted On</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of myFeedback">
+            <td>
+              <span class="badge" [class.badge-confirmed]="f.rating >= 4" [class.badge-waiting]="f.rating === 3" [class.badge-closed]="f.rating <= 2" style="font-size: 0.85rem;">
+                ★ {{ f.rating }} / 5
+              </span>
+            </td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-main);">{{ f.eventTitle }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">Event #{{ f.eventId }}</div>
+            </td>
+            <td style="font-size: 0.88rem; color: var(--text-muted); max-width: 380px;">{{ f.comments || '—' }}</td>
+            <td>{{ f.createdAtUtc | date:'medium' }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

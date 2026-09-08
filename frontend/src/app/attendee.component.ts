@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from './api.service';
-import { MyEventItemDto, CategoryResponseDto, AttendeeCategoryPreferenceDto } from './models';
+import { MyEventItemDto, CategoryResponseDto, AttendeeCategoryPreferenceDto, FeedbackHistoryItemDto } from './models';
 
 @Component({
   selector: 'app-attendee',
@@ -17,7 +17,11 @@ export class AttendeeComponent implements OnInit {
   isLoading = false;
 
   // Active Tab
-  activeTab: 'registrations' | 'calendar' | 'preferences' = 'registrations';
+  activeTab: 'registrations' | 'calendar' | 'preferences' | 'feedback' = 'registrations';
+
+  // Feedback History
+  myFeedback: FeedbackHistoryItemDto[] = [];
+  isLoadingFeedback = false;
 
   // Category Preferences
   allCategories: CategoryResponseDto[] = [];
@@ -40,6 +44,23 @@ export class AttendeeComponent implements OnInit {
   ngOnInit() {
     this.loadMyEvents();
     this.loadCategoriesAndPreferences();
+    this.loadMyFeedback();
+  }
+
+  loadMyFeedback() {
+    this.isLoadingFeedback = true;
+    this.apiService.getMyFeedback().subscribe({
+      next: (res) => {
+        this.myFeedback = res.data || [];
+        this.isLoadingFeedback = false;
+      },
+      error: () => this.isLoadingFeedback = false
+    });
+  }
+
+  showFeedbackHistory() {
+    this.activeTab = 'feedback';
+    this.loadMyFeedback();
   }
 
   loadMyEvents() {
@@ -146,6 +167,7 @@ export class AttendeeComponent implements OnInit {
       next: () => {
         this.actionMessage = 'Thank you! Your feedback and rating have been recorded.';
         this.closeFeedbackModal();
+        this.loadMyFeedback();
       },
       error: (err) => {
         this.actionError = err?.error?.message || 'Failed to submit feedback.';

@@ -42,8 +42,10 @@ namespace EventManagementSystemServiceLayer.DTOs.EventManager
        public DateTime? RegistrationOpenAtUtc { get; set; }
        public DateTime? RegistrationCloseAtUtc { get; set; }
        public int Capacity { get; set; }
-       public string Status { get; set; } = null!;
-       public long OrganizerUserId { get; set; }
+public string Status { get; set; } = null!;
+        public string? ApprovalStatus { get; set; }
+        public string? RejectionReason { get; set; }
+        public long OrganizerUserId { get; set; }
        public string? OrganizerDisplayName { get; set; }
        public DateTime? PublishedAtUtc { get; set; }
        public DateTime? ClosedAtUtc { get; set; }

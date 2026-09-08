@@ -42,6 +42,15 @@ namespace EventManagementSystemServiceLayer.Controllers
             return Ok(new ApiResponse<FeedbackSummaryDto>(true, 200, "Feedback summary retrieved.", summary));
         }
 
+        [HttpGet("my")]
+        [Authorize]
+        public async Task<IActionResult> GetMyFeedback(CancellationToken ct = default)
+        {
+            var userId = GetCurrentUserId();
+            var history = await _service.GetUserFeedbackHistoryAsync(userId, ct);
+            return Ok(new ApiResponse<IReadOnlyList<FeedbackHistoryItemDto>>(true, 200, "Feedback history retrieved.", history));
+        }
+
         private long GetCurrentUserId()
         {
             var val = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");

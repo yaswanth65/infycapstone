@@ -117,6 +117,14 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  isValidPhone(phone: string): boolean {
+    return /^\d{7,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''));
+  }
+
   toggleCategory(c: CategoryResponseDto) {
     this.apiService.updateCategory(c.categoryId, {
       categoryId: c.categoryId,
@@ -185,6 +193,10 @@ export class AdminComponent implements OnInit {
   }
 
   reviewApproval(requestId: number, approve: boolean) {
+    if (!approve && !(this.approvalRemarks[requestId] || '').trim()) {
+      this.errorMessage = 'A rejection reason is required. Please add review notes before rejecting.';
+      return;
+    }
     const remarks = this.approvalRemarks[requestId] || (approve ? 'Approved by Admin.' : 'Needs revision.');
     this.apiService.reviewApproval({
       approvalRequestId: requestId,

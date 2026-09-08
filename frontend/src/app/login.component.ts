@@ -101,6 +101,21 @@ export class LoginComponent implements OnInit {
       return;
     }
 
+    if (this.signupModel.email && !this.isValidEmail(this.signupModel.email)) {
+      this.errorMessage = 'Please enter a valid email address.';
+      return;
+    }
+
+    if (this.signupModel.password && !this.isStrongPassword(this.signupModel.password)) {
+      this.errorMessage = 'Password does not meet strength requirements.';
+      return;
+    }
+
+    if (this.signupModel.phoneNumber && !this.isValidPhone(this.signupModel.phoneNumber)) {
+      this.errorMessage = 'Please enter a valid phone number (digits only, 7-15 characters).';
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
     this.successMessage = '';
@@ -122,5 +137,17 @@ export class LoginComponent implements OnInit {
         this.errorMessage = err?.error?.message || 'Registration failed. Username or email may already be in use.';
       }
     });
+  }
+
+  isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  isStrongPassword(pw: string): boolean {
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/.test(pw);
+  }
+
+  isValidPhone(phone: string): boolean {
+    return /^\d{7,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''));
   }
 }

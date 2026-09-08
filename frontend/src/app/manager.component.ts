@@ -12,7 +12,8 @@ import {
   CategoryResponseDto,
   VenueResponseDto,
   RecurringEventCreateDto,
-  CapacityAlertResponseDto
+  CapacityAlertResponseDto,
+  FeedbackHistoryItemDto
 } from './models';
 
 @Component({
@@ -22,9 +23,13 @@ import {
   templateUrl: './manager.component.html'
 })
 export class ManagerComponent implements OnInit {
-  activeTab: 'events' | 'create' | 'recurring' | 'roster' | 'requests' | 'attendance' = 'events';
+  activeTab: 'events' | 'create' | 'recurring' | 'roster' | 'requests' | 'attendance' | 'feedback' = 'events';
 
   constructor(public apiService: ApiService) {}
+
+  // Feedback history
+  myFeedback: FeedbackHistoryItemDto[] = [];
+  isLoadingFeedback = false;
 
   // Events list
   events: EventResponseDto[] = [];
@@ -100,6 +105,7 @@ export class ManagerComponent implements OnInit {
     this.loadEvents();
     this.loadCategories();
     this.loadVenues();
+    this.loadMyFeedback();
   }
 
   loadCategories() {
@@ -116,13 +122,14 @@ export class ManagerComponent implements OnInit {
     });
   }
 
-  setTab(tab: 'events' | 'create' | 'recurring' | 'roster' | 'requests' | 'attendance') {
+  setTab(tab: 'events' | 'create' | 'recurring' | 'roster' | 'requests' | 'attendance' | 'feedback') {
     this.activeTab = tab;
     this.message = '';
     this.errorMessage = '';
     if (tab === 'events') this.loadEvents();
     if (tab === 'requests') this.loadRequests();
     if (tab === 'recurring') this.openRecurringForm();
+    if (tab === 'feedback') this.loadMyFeedback();
     if (tab === 'roster') {
       if (!this.rosterEventId && this.events.length > 0) {
         this.rosterEventId = this.events[0].eventId;
@@ -619,5 +626,25 @@ export class ManagerComponent implements OnInit {
   private toUtcIso(value: string): string {
     if (!value) return value;
     return /([zZ]|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}:00Z`;
+  }
+
+  endBeforeStart(end: string, start: string): boolean {
+    if (!end || !start) return false;
+    return new Date(this.toUtcIso(end)).getTime() <= new Date(this.toUtcIso(start)).getTime();
+  }
+
+  isValidUserId(id: number): boolean {
+    return Number.isInteger(Number(id)) && Number(id) >= 1;
+  }
+
+  loadMyFeedback() {
+    this.isLoadingFeedback = true;
+    this.apiService.getMyFeedback().subscribe({
+      next: (res) => {
+        this.myFeedback = res.data || [];
+        this.isLoadingFeedback = false;
+      },
+      error: () => this.isLoadingFeedback = false
+    });
   }
 }

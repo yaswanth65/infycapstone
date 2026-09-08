@@ -50,6 +50,7 @@ import {
   FeedbackCreateDto,
   FeedbackItemDto,
   FeedbackSummaryDto,
+  FeedbackHistoryItemDto,
   AttendeeCategoryPreferenceDto,
   SetPreferencesDto,
   RecommendedEventDto,
@@ -323,6 +324,10 @@ export class ApiService {
 
   getEventFeedbackSummary(eventId: number): Observable<ApiResponse<FeedbackSummaryDto>> {
     return this.http.get<ApiResponse<FeedbackSummaryDto>>(`${this.baseUrl}/feedback/events/${eventId}/summary`);
+  }
+
+  getMyFeedback(): Observable<ApiResponse<FeedbackHistoryItemDto[]>> {
+    return this.http.get<ApiResponse<FeedbackHistoryItemDto[]>>(`${this.baseUrl}/feedback/my`);
   }
 
   // Recommendations & Preferences

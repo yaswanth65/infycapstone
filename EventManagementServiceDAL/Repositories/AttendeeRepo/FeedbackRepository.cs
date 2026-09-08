@@ -39,6 +39,16 @@ namespace EventManagementServiceDAL.Repositories.AttendeeRepo
                 .ToListAsync(ct);
         }
 
+        public async Task<IReadOnlyList<EventFeedback>> GetUserFeedbacksAsync(long attendeeUserId, CancellationToken ct = default)
+        {
+            return await _db.EventFeedbacks
+                .AsNoTracking()
+                .Include(f => f.Event)
+                .Where(f => f.AttendeeUserId == attendeeUserId && !f.IsFlagged)
+                .OrderByDescending(f => f.CreatedAtUtc)
+                .ToListAsync(ct);
+        }
+
         public async Task<(double AverageRating, int TotalCount, Dictionary<int, int> StarDistribution)> GetSummaryForEventAsync(long eventId, CancellationToken ct = default)
         {
             var feedbacks = await _db.EventFeedbacks

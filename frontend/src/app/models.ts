@@ -147,6 +147,8 @@ export interface EventResponseDto {
   registrationCloseAtUtc?: string;
   capacity: number;
   status: string;
+  approvalStatus?: string;
+  rejectionReason?: string;
   organizerUserId: number;
   organizerDisplayName?: string;
   publishedAtUtc?: string;
@@ -493,6 +495,15 @@ export interface FeedbackSummaryDto {
   totalCount: number;
   starDistribution: Record<number, number>;
   recentReviews: FeedbackItemDto[];
+}
+
+export interface FeedbackHistoryItemDto {
+  feedbackId: number;
+  eventId: number;
+  eventTitle: string;
+  rating: number;
+  comments?: string;
+  createdAtUtc: string;
 }
 
 export interface AttendeeCategoryPreferenceDto {

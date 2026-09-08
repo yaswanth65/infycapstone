@@ -11,6 +11,7 @@ namespace EventManagementSystemServiceLayer.Services.Brownfield
     {
         Task<FeedbackItemDto> SubmitFeedbackAsync(long attendeeUserId, FeedbackCreateDto dto, CancellationToken ct = default);
         Task<FeedbackSummaryDto> GetEventFeedbackSummaryAsync(long eventId, CancellationToken ct = default);
+        Task<IReadOnlyList<FeedbackHistoryItemDto>> GetUserFeedbackHistoryAsync(long userId, CancellationToken ct = default);
     }
 
     public sealed class FeedbackService : IFeedbackService
@@ -76,6 +77,19 @@ namespace EventManagementSystemServiceLayer.Services.Brownfield
             )).ToList();
 
             return new FeedbackSummaryDto(eventId, avg, total, dist, recent);
+        }
+
+        public async Task<IReadOnlyList<FeedbackHistoryItemDto>> GetUserFeedbackHistoryAsync(long userId, CancellationToken ct = default)
+        {
+            var feedbacks = await _feedbackRepo.GetUserFeedbacksAsync(userId, ct);
+            return feedbacks.Select(f => new FeedbackHistoryItemDto(
+                f.FeedbackId,
+                f.EventId,
+                f.Event?.Title ?? $"Event #{f.EventId}",
+                f.Rating,
+                f.Comments,
+                f.CreatedAtUtc
+            )).ToList();
         }
     }
 }
