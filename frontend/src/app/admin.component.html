@@ -105,20 +105,23 @@
   <div *ngIf="activeTab === 'create-user'" class="glass-panel" style="padding: 28px; border-radius: 20px; max-width: 600px;">
     <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 20px;">Create System User Account</h3>
 
-    <form (ngSubmit)="createUserSubmit()">
+    <form (ngSubmit)="createUserSubmit()" novalidate>
       <div class="form-group">
         <label for="adminEmail">Email Address *</label>
-        <input type="email" id="adminEmail" [(ngModel)]="userModel.email" name="email" class="input-field" placeholder="user@company.com" required>
+        <input type="email" id="adminEmail" [(ngModel)]="userModel.email" name="email" class="input-field" [class.input-invalid]="userFormSubmitted && !userModel.email" placeholder="user@company.com" required>
+        <span *ngIf="userFormSubmitted && !userModel.email" class="field-error">Email address is required.</span>
       </div>
 
       <div class="form-group">
         <label for="adminUsername">Username *</label>
-        <input type="text" id="adminUsername" [(ngModel)]="userModel.userName" name="userName" class="input-field" placeholder="johndoe" required>
+        <input type="text" id="adminUsername" [(ngModel)]="userModel.userName" name="userName" class="input-field" [class.input-invalid]="userFormSubmitted && !userModel.userName" placeholder="johndoe" required>
+        <span *ngIf="userFormSubmitted && !userModel.userName" class="field-error">Username is required.</span>
       </div>
 
       <div class="form-group">
         <label for="adminDisplayName">Display Name *</label>
-        <input type="text" id="adminDisplayName" [(ngModel)]="userModel.displayName" name="displayName" class="input-field" placeholder="John Doe" required>
+        <input type="text" id="adminDisplayName" [(ngModel)]="userModel.displayName" name="displayName" class="input-field" [class.input-invalid]="userFormSubmitted && !userModel.displayName" placeholder="John Doe" required>
+        <span *ngIf="userFormSubmitted && !userModel.displayName" class="field-error">Display name is required.</span>
       </div>
 
       <div class="form-group">
@@ -128,9 +131,11 @@
 
       <div class="form-group">
         <label for="adminRole">Assign System Role *</label>
-        <select id="adminRole" [(ngModel)]="userModel.roleId" name="roleId" class="select-field" required>
+        <select id="adminRole" [(ngModel)]="userModel.roleId" name="roleId" class="select-field" [class.input-invalid]="userFormSubmitted && !userModel.roleId" required>
+          <option value="0" disabled>Select a role...</option>
           <option *ngFor="let r of roles" [value]="r.roleId">{{ r.roleName }}</option>
         </select>
+        <span *ngIf="userFormSubmitted && !userModel.roleId" class="field-error">Please select a valid role.</span>
       </div>
 
       <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
@@ -236,10 +241,11 @@
       <!-- Create Category Form -->
       <div class="glass-panel" style="padding: 24px; border-radius: 16px;">
         <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 16px;">🏷️ Add New Category</h3>
-        <form (ngSubmit)="createCategory()">
+        <form (ngSubmit)="createCategory()" novalidate>
           <div class="form-group">
             <label>Category Name *</label>
-            <input type="text" [(ngModel)]="newCategoryName" name="catName" class="input-field" placeholder="e.g. AI & Machine Learning" required>
+            <input type="text" [(ngModel)]="newCategoryName" name="catName" class="input-field" [class.input-invalid]="catFormSubmitted && (!newCategoryName || !newCategoryName.trim())" placeholder="e.g. AI & Machine Learning" required>
+            <span *ngIf="catFormSubmitted && (!newCategoryName || !newCategoryName.trim())" class="field-error">Category name is required.</span>
           </div>
           <div class="form-group">
             <label>Description</label>
@@ -297,18 +303,21 @@
       <!-- Create Venue Form -->
       <div class="glass-panel" style="padding: 24px; border-radius: 16px;">
         <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 16px;">🏢 Register New Venue</h3>
-        <form (ngSubmit)="createVenue()">
+        <form (ngSubmit)="createVenue()" novalidate>
           <div class="form-group">
             <label>Venue Name *</label>
-            <input type="text" [(ngModel)]="newVenueName" name="vName" class="input-field" placeholder="e.g. Grand Convention Center" required>
+            <input type="text" [(ngModel)]="newVenueName" name="vName" class="input-field" [class.input-invalid]="venueFormSubmitted && (!newVenueName || !newVenueName.trim())" placeholder="e.g. Grand Convention Center" required>
+            <span *ngIf="venueFormSubmitted && (!newVenueName || !newVenueName.trim())" class="field-error">Venue name is required.</span>
           </div>
           <div class="form-group">
             <label>Address *</label>
-            <input type="text" [(ngModel)]="newVenueAddress" name="vAddress" class="input-field" placeholder="e.g. 100 Main St, Tech City" required>
+            <input type="text" [(ngModel)]="newVenueAddress" name="vAddress" class="input-field" [class.input-invalid]="venueFormSubmitted && (!newVenueAddress || !newVenueAddress.trim())" placeholder="e.g. 100 Main St, Tech City" required>
+            <span *ngIf="venueFormSubmitted && (!newVenueAddress || !newVenueAddress.trim())" class="field-error">Venue address is required.</span>
           </div>
           <div class="form-group">
             <label>Maximum Capacity *</label>
-            <input type="number" [(ngModel)]="newVenueCapacity" name="vCapacity" class="input-field" min="1" required>
+            <input type="number" [(ngModel)]="newVenueCapacity" name="vCapacity" class="input-field" [class.input-invalid]="venueFormSubmitted && (!newVenueCapacity || newVenueCapacity <= 0)" min="1" required>
+            <span *ngIf="venueFormSubmitted && (!newVenueCapacity || newVenueCapacity <= 0)" class="field-error">Capacity must be at least 1.</span>
           </div>
           <div class="form-group">
             <label>Contact Details</label>
@@ -382,8 +391,9 @@
             <th>Req ID</th>
             <th>Event Title</th>
             <th>Organizer</th>
+            <th>Submission Remarks</th>
             <th>Submitted At</th>
-            <th>Remarks / Action</th>
+            <th>Admin Decision / Review Notes</th>
           </tr>
         </thead>
         <tbody>
@@ -396,23 +406,59 @@
             <td>
               <span class="badge badge-role">{{ req.requestedByUserName }}</span>
             </td>
+            <td>
+              <div *ngIf="req.remarks" style="color: var(--text-main); font-size: 0.85rem; background: rgba(99, 102, 241, 0.1); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                💬 {{ req.remarks }}
+              </div>
+              <div *ngIf="!req.remarks" style="color: var(--text-dim); font-size: 0.8rem; font-style: italic;">
+                No remarks provided by manager
+              </div>
+            </td>
             <td style="font-size: 0.85rem; color: var(--text-muted);">{{ req.requestedAtUtc | date:'short' }}</td>
             <td>
-              <div style="display: flex; flex-direction: column; gap: 8px; min-width: 200px;">
-                <input type="text" [(ngModel)]="approvalRemarks[req.approvalRequestId]" class="input-field" style="padding: 4px 8px; font-size: 0.8rem;" placeholder="Review notes / reason...">
-                <div style="display: flex; gap: 8px;">
-                  <button (click)="reviewApproval(req.approvalRequestId, true)" class="btn btn-primary btn-sm" style="flex: 1;">
-                    ✓ Approve
-                  </button>
-                  <button (click)="reviewApproval(req.approvalRequestId, false)" class="btn btn-rose btn-sm" style="flex: 1;">
-                    ✕ Reject
-                  </button>
-                </div>
+              <div style="display: flex; gap: 8px; min-width: 180px;">
+                <button (click)="openReviewModal(req, true)" class="btn btn-primary btn-sm" style="flex: 1;">
+                  ✓ Approve
+                </button>
+                <button (click)="openReviewModal(req, false)" class="btn btn-rose btn-sm" style="flex: 1;">
+                  ✕ Reject
+                </button>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Review Confirmation Modal -->
+  <div *ngIf="reviewModalData" class="modal-overlay" (click)="closeReviewModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()" style="max-width: 520px;">
+      <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 12px;">
+        {{ reviewModalData.approve ? '✅ Confirm Event Approval' : '⚠️ Confirm Event Rejection' }}
+      </h3>
+      
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">
+        Are you sure you want to <strong>{{ reviewModalData.approve ? 'approve' : 'reject' }}</strong> event:
+        <span style="color: var(--text-main); font-weight: 700;">"{{ reviewModalData.eventTitle }}"</span> (ID: #{{ reviewModalData.eventId }})?
+      </p>
+
+      <div style="margin-bottom: 16px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 12px; border-radius: 10px;">
+        <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 4px; font-weight: 700;">Manager's Submission Remarks:</div>
+        <div style="font-size: 0.9rem; color: var(--text-main);">💬 {{ reviewModalData.managerRemarks }}</div>
+      </div>
+
+      <div class="form-group">
+        <label>Admin Feedback / Decision Notes for Organizer</label>
+        <input type="text" [(ngModel)]="reviewModalData.adminRemarks" class="input-field" placeholder="Enter notes or feedback...">
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+        <button (click)="closeReviewModal()" class="btn btn-secondary">Cancel</button>
+        <button (click)="confirmReview()" class="btn" [class.btn-primary]="reviewModalData.approve" [class.btn-rose]="!reviewModalData.approve">
+          {{ reviewModalData.approve ? 'Confirm & Approve' : 'Confirm & Reject' }}
+        </button>
+      </div>
     </div>
   </div>
 </div>

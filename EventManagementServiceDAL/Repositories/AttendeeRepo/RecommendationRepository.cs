@@ -52,22 +52,20 @@ namespace EventManagementServiceDAL.Repositories.AttendeeRepo
                 .ToListAsync(ct);
 
             var now = DateTime.UtcNow;
+            if (userCategoryIds.Count == 0)
+            {
+                return Array.Empty<Event>();
+            }
+
             var publishedEvents = _db.Events
                 .AsNoTracking()
                 .Include(e => e.EventCategoryMappings)
                     .ThenInclude(m => m.Category)
                 .Include(e => e.VenueNavigation)
-                .Where(e => e.Status == "Published" && e.StartAtUtc >= now);
-
-            if (userCategoryIds.Count > 0)
-            {
-                publishedEvents = publishedEvents.OrderByDescending(e => e.EventCategoryMappings.Count(m => userCategoryIds.Contains(m.CategoryId)))
-                                                 .ThenBy(e => e.StartAtUtc);
-            }
-            else
-            {
-                publishedEvents = publishedEvents.OrderBy(e => e.StartAtUtc);
-            }
+                .Where(e => e.Status == "Published" && e.EndAtUtc >= now)
+                .Where(e => e.EventCategoryMappings.Any(m => userCategoryIds.Contains(m.CategoryId)))
+                .OrderByDescending(e => e.EventCategoryMappings.Count(m => userCategoryIds.Contains(m.CategoryId)))
+                .ThenBy(e => e.StartAtUtc);
 
             return await publishedEvents.Take(limit).ToListAsync(ct);
         }

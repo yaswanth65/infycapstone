@@ -42,7 +42,11 @@ namespace EventManagementSystemServiceLayer.Controllers
                if (result == null) return BadRequest(new ApiResponse<object>(false, 400, "Failed to create event."));
                return CreatedAtAction(nameof(GetEvent), new { eventId = result.EventId }, new ApiResponse<EventResponseDto>(true, 201, "Event created.", result));
            }
-           catch (Exception ex)
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object>(false, 400, ex.Message));
+            }
+            catch (Exception ex)
            {
                return StatusCode(500, new ApiResponse<object>(false, 500, "An error occurred while creating the event.", null));
            }

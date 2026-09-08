@@ -42,6 +42,15 @@ namespace EventManagementSystemServiceLayer.Controllers
             return Ok(new ApiResponse<FeedbackSummaryDto>(true, 200, "Feedback summary retrieved.", summary));
         }
 
+        [HttpGet("my-reviews")]
+        [Authorize(Roles = "Attendee")]
+        public async Task<IActionResult> GetMyReviews(CancellationToken ct = default)
+        {
+            var userId = GetCurrentUserId();
+            var list = await _service.GetMyReviewedEventIdsAsync(userId, ct);
+            return Ok(new ApiResponse<IReadOnlyList<long>>(true, 200, "My reviewed event IDs retrieved.", list));
+        }
+
         private long GetCurrentUserId()
         {
             var val = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");

@@ -57,6 +57,9 @@ export class AdminComponent implements OnInit {
     phoneNumber: '',
     roleId: 0
   };
+  userFormSubmitted = false;
+  catFormSubmitted = false;
+  venueFormSubmitted = false;
 
   // Audit Logs
   auditLogs: AuditLogResponseDto[] = [];
@@ -102,7 +105,10 @@ export class AdminComponent implements OnInit {
   }
 
   createCategory() {
-    if (!this.newCategoryName.trim()) return;
+    this.catFormSubmitted = true;
+    if (!this.newCategoryName || !this.newCategoryName.trim()) {
+      return;
+    }
     this.apiService.createCategory({
       categoryName: this.newCategoryName.trim(),
       description: this.newCategoryDesc.trim()
@@ -111,6 +117,7 @@ export class AdminComponent implements OnInit {
         this.message = 'Category created successfully.';
         this.newCategoryName = '';
         this.newCategoryDesc = '';
+        this.catFormSubmitted = false;
         this.loadCategories();
       },
       error: (err) => this.errorMessage = err?.error?.message || 'Failed to create category.'
@@ -141,7 +148,10 @@ export class AdminComponent implements OnInit {
   }
 
   createVenue() {
-    if (!this.newVenueName.trim()) return;
+    this.venueFormSubmitted = true;
+    if (!this.newVenueName || !this.newVenueName.trim() || !this.newVenueAddress || !this.newVenueAddress.trim() || !this.newVenueCapacity || this.newVenueCapacity <= 0) {
+      return;
+    }
     this.apiService.createVenue({
       name: this.newVenueName.trim(),
       address: this.newVenueAddress.trim(),
@@ -153,6 +163,8 @@ export class AdminComponent implements OnInit {
         this.newVenueName = '';
         this.newVenueAddress = '';
         this.newVenueContact = '';
+        this.newVenueCapacity = 100;
+        this.venueFormSubmitted = false;
         this.loadVenues();
       },
       error: (err) => this.errorMessage = err?.error?.message || 'Failed to register venue.'
@@ -181,6 +193,51 @@ export class AdminComponent implements OnInit {
         this.isLoadingApprovals = false;
       },
       error: () => this.isLoadingApprovals = false
+    });
+  }
+
+  // Confirmation Modal for Approval Review
+  reviewModalData: {
+    requestId: number;
+    eventId: number;
+    eventTitle: string;
+    managerRemarks: string;
+    approve: boolean;
+    adminRemarks: string;
+  } | null = null;
+
+  openReviewModal(req: EventApprovalResponseDto, approve: boolean) {
+    this.reviewModalData = {
+      requestId: req.approvalRequestId,
+      eventId: req.eventId,
+      eventTitle: req.eventTitle,
+      managerRemarks: req.remarks || 'No notes provided',
+      approve,
+      adminRemarks: this.approvalRemarks[req.approvalRequestId] || (approve ? 'Approved by Admin.' : 'Needs revision.')
+    };
+  }
+
+  closeReviewModal() {
+    this.reviewModalData = null;
+  }
+
+  confirmReview() {
+    if (!this.reviewModalData) return;
+    const { requestId, approve, adminRemarks } = this.reviewModalData;
+    this.apiService.reviewApproval({
+      approvalRequestId: requestId,
+      approve,
+      remarks: adminRemarks
+    }).subscribe({
+      next: () => {
+        this.message = `Event has been ${approve ? 'approved' : 'rejected'}. Organizer notified.`;
+        this.closeReviewModal();
+        this.loadApprovals();
+      },
+      error: (err) => {
+        this.errorMessage = err?.error?.message || 'Review action failed.';
+        this.closeReviewModal();
+      }
     });
   }
 
@@ -228,8 +285,8 @@ export class AdminComponent implements OnInit {
   }
 
   createUserSubmit() {
+    this.userFormSubmitted = true;
     if (!this.userModel.email || !this.userModel.userName || !this.userModel.displayName || !this.userModel.roleId) {
-      this.errorMessage = 'Please complete all required fields.';
       return;
     }
 
@@ -237,6 +294,8 @@ export class AdminComponent implements OnInit {
       next: (res) => {
         if (res.success) {
           this.message = `User '${res.data.userName}' created successfully.`;
+          this.userFormSubmitted = false;
+          this.userModel = { email: '', userName: '', displayName: '', phoneNumber: '', roleId: this.roles[0]?.roleId || 0 };
           this.setTab('users');
         } else {
           this.errorMessage = res.message;

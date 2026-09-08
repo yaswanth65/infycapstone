@@ -386,3 +386,31 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(99, 102, 241, 0.8);
 }
 
+/* Inline Field Validation Errors */
+.field-error {
+  color: #f87171;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  display: block;
+  font-weight: 500;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.field-success {
+  color: #34d399;
+  font-size: 0.8rem;
+  margin-top: 4px;
+  display: block;
+  font-weight: 500;
+}
+
+.input-invalid {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2) !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

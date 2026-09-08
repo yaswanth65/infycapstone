@@ -17,6 +17,9 @@ export class EventsComponent implements OnInit {
   recommendedEvents: any[] = [];
   categories: any[] = [];
   selectedCategory = '';
+  selectedCategoryId: number | null = null;
+  userPreferenceCategoryIds: Set<number> = new Set();
+  filterOnlyPreferences = false;
 
   // Feedback viewing
   feedbackSummary: any = null;
@@ -43,6 +46,7 @@ export class EventsComponent implements OnInit {
 
   ngOnInit() {
     this.loadCategories();
+    this.loadUserPreferences();
     this.loadMyRegistrations();
     this.loadEvents();
     this.loadRecommendations();
@@ -52,6 +56,17 @@ export class EventsComponent implements OnInit {
     this.apiService.getCategories(true).subscribe({
       next: (res) => {
         if (res?.data) this.categories = res.data;
+      }
+    });
+  }
+
+  loadUserPreferences() {
+    if (!this.authService.isAuthenticated() || this.authService.getRole() !== 'Attendee') return;
+    this.apiService.getPreferences().subscribe({
+      next: (res) => {
+        const prefSet = new Set<number>();
+        (res?.data || []).forEach(p => prefSet.add(p.categoryId));
+        this.userPreferenceCategoryIds = prefSet;
       }
     });
   }
@@ -80,14 +95,31 @@ export class EventsComponent implements OnInit {
   }
 
   get displayedEvents(): PublicEventDto[] {
-    if (!this.hideRegistered || this.registeredEventIds.size === 0) {
-      return this.events;
+    let list = this.events;
+    if (this.hideRegistered && this.registeredEventIds.size > 0) {
+      list = list.filter(e => !this.registeredEventIds.has(e.eventId));
     }
-    return this.events.filter(e => !this.registeredEventIds.has(e.eventId));
+    if (this.filterOnlyPreferences && this.userPreferenceCategoryIds.size > 0) {
+      list = list.filter(e => e.categoryIds?.some(id => this.userPreferenceCategoryIds.has(id)));
+    }
+    return list;
   }
 
   isRegistered(eventId: number): boolean {
     return this.registeredEventIds.has(eventId);
+  }
+
+  selectCategory(catId: number | null) {
+    this.filterOnlyPreferences = false;
+    this.selectedCategoryId = catId;
+    this.loadEvents();
+  }
+
+  togglePreferenceFilter() {
+    this.filterOnlyPreferences = !this.filterOnlyPreferences;
+    if (this.filterOnlyPreferences) {
+      this.selectedCategoryId = null;
+    }
   }
 
   loadEvents() {
@@ -95,7 +127,8 @@ export class EventsComponent implements OnInit {
     this.apiService.getPublicEvents({
       keyword: this.keyword,
       location: this.location,
-      onlyAvailable: this.onlyAvailable
+      onlyAvailable: this.onlyAvailable,
+      categoryId: this.selectedCategoryId || undefined
     }).subscribe({
       next: (data) => {
         this.events = data || [];
@@ -112,6 +145,8 @@ export class EventsComponent implements OnInit {
     this.location = '';
     this.onlyAvailable = false;
     this.hideRegistered = false;
+    this.selectedCategoryId = null;
+    this.filterOnlyPreferences = false;
     this.loadEvents();
   }
 

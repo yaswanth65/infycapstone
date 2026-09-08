@@ -367,6 +367,8 @@ return await _db.Registrations
     {
         return await _db.Registrations
             .AsNoTracking()
+            .OrderByDescending(r => r.RegistrationStatus == ConfirmedStatus ? 1 : 0)
+            .ThenByDescending(r => r.RegistrationId)
             .FirstOrDefaultAsync(r => r.EventId == eventId && r.AttendeeUserId == attendeeUserId, cancellationToken);
     }
 

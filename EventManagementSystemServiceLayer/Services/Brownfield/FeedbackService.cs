@@ -11,6 +11,7 @@ namespace EventManagementSystemServiceLayer.Services.Brownfield
     {
         Task<FeedbackItemDto> SubmitFeedbackAsync(long attendeeUserId, FeedbackCreateDto dto, CancellationToken ct = default);
         Task<FeedbackSummaryDto> GetEventFeedbackSummaryAsync(long eventId, CancellationToken ct = default);
+        Task<IReadOnlyList<long>> GetMyReviewedEventIdsAsync(long attendeeUserId, CancellationToken ct = default);
     }
 
     public sealed class FeedbackService : IFeedbackService
@@ -34,19 +35,27 @@ namespace EventManagementSystemServiceLayer.Services.Brownfield
 
         public async Task<FeedbackItemDto> SubmitFeedbackAsync(long attendeeUserId, FeedbackCreateDto dto, CancellationToken ct = default)
         {
+            if (dto.Rating < 1 || dto.Rating > 5)
+            {
+                throw new InvalidOperationException("Rating must be between 1 and 5 stars.");
+            }
+
             var ev = await _eventRepo.GetByIdAsync(dto.EventId, ct: ct);
             if (ev is null) throw new InvalidOperationException("Event not found.");
 
             var reg = await _registrationRepo.GetByEventAndAttendeeAsync(dto.EventId, attendeeUserId, ct);
-            if (reg is null || reg.RegistrationStatus != "Confirmed")
+            if (reg is null || reg.RegistrationStatus == "Cancelled")
             {
-                throw new InvalidOperationException("Only confirmed attendees can submit feedback.");
+                throw new InvalidOperationException("Only confirmed attendees can submit feedback for this event.");
             }
 
             var existing = await _feedbackRepo.GetUserFeedbackAsync(dto.EventId, attendeeUserId, ct);
             if (existing != null)
             {
-                throw new InvalidOperationException("You have already submitted feedback for this event.");
+                existing.Rating = dto.Rating;
+                existing.Comments = dto.Comments?.Trim();
+                var updated = await _feedbackRepo.UpdateFeedbackAsync(existing, ct);
+                return new FeedbackItemDto(updated.FeedbackId, updated.EventId, updated.AttendeeUserId, "", updated.Rating, updated.Comments, updated.CreatedAtUtc);
             }
 
             var entity = new EventFeedback
@@ -60,6 +69,9 @@ namespace EventManagementSystemServiceLayer.Services.Brownfield
             var created = await _feedbackRepo.AddFeedbackAsync(entity, ct);
             return new FeedbackItemDto(created.FeedbackId, created.EventId, created.AttendeeUserId, "", created.Rating, created.Comments, created.CreatedAtUtc);
         }
+
+        public Task<IReadOnlyList<long>> GetMyReviewedEventIdsAsync(long attendeeUserId, CancellationToken ct = default)
+            => _feedbackRepo.GetReviewedEventIdsForAttendeeAsync(attendeeUserId, ct);
 
         public async Task<FeedbackSummaryDto> GetEventFeedbackSummaryAsync(long eventId, CancellationToken ct = default)
         {

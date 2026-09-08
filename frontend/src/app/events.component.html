@@ -26,11 +26,15 @@
 
     <!-- Category Chips -->
     <div *ngIf="categories.length > 0" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 16px;">
-      <button (click)="keyword = ''; loadEvents()" class="badge" [class.badge-role]="!keyword" style="cursor: pointer; border: none;">
+      <button (click)="selectCategory(null)" class="badge" [class.badge-role]="selectedCategoryId === null && !filterOnlyPreferences" style="cursor: pointer; border: none;">
         All Categories
       </button>
-      <button *ngFor="let c of categories" (click)="keyword = c.categoryName; loadEvents()" class="badge" [class.badge-role]="keyword === c.categoryName" style="cursor: pointer; border: none;">
+      <button *ngIf="authService.isAuthenticated() && authService.getRole() === 'Attendee'" (click)="togglePreferenceFilter()" class="badge" [class.badge-attended]="filterOnlyPreferences" style="cursor: pointer; border: 1px solid var(--primary);">
+        🎯 Matches My Preferences {{ userPreferenceCategoryIds.size > 0 ? '(' + userPreferenceCategoryIds.size + ')' : '' }}
+      </button>
+      <button *ngFor="let c of categories" (click)="selectCategory(c.categoryId)" class="badge" [class.badge-role]="selectedCategoryId === c.categoryId" style="cursor: pointer; border: none;">
         🏷️ {{ c.categoryName }}
+        <span *ngIf="userPreferenceCategoryIds.has(c.categoryId)" style="color: #fbbf24; margin-left: 2px;">★</span>
       </button>
     </div>
   </div>
@@ -46,7 +50,7 @@
         <div style="font-weight: 700; color: var(--text-main); margin-bottom: 4px;">{{ r.title }}</div>
         <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px;">📍 {{ r.venue }} • 🗓️ {{ r.startAtUtc | date:'shortDate' }}</div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
-          <span *ngFor="let cat of r.categories" class="badge badge-draft" style="font-size: 0.7rem;">{{ cat }}</span>
+          <span *ngFor="let cat of r.categories" class="badge badge-draft" style="font-size: 0.7rem;">🏷️ {{ cat }}</span>
           <span *ngIf="r.isVirtual" class="badge badge-attended" style="font-size: 0.7rem;">💻 Virtual</span>
         </div>
         <button (click)="viewDetails(r.eventId)" class="btn btn-secondary btn-sm" style="width: 100%;">View Details</button>
@@ -81,6 +85,11 @@
         <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">
           {{ item.title }}
         </h3>
+
+        <div *ngIf="(item.categories && item.categories.length > 0) || item.isVirtual" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
+          <span *ngFor="let cat of item.categories" class="badge badge-draft" style="font-size: 0.72rem;">🏷️ {{ cat }}</span>
+          <span *ngIf="item.isVirtual" class="badge" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; font-size: 0.72rem;">💻 Virtual</span>
+        </div>
         
         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
           {{ item.description || 'No description available.' }}
@@ -116,6 +125,11 @@
           <h2 style="font-size: 1.5rem; font-weight: 800;">{{ selectedEvent.title }}</h2>
         </div>
         <button (click)="closeModal()" class="btn btn-secondary btn-sm" style="padding: 4px 10px;">✕</button>
+      </div>
+
+      <div *ngIf="(selectedEvent.categories && selectedEvent.categories.length > 0) || selectedEvent.isVirtual" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+        <span *ngFor="let cat of selectedEvent.categories" class="badge badge-draft" style="font-size: 0.75rem;">🏷️ {{ cat }}</span>
+        <span *ngIf="selectedEvent.isVirtual" class="badge" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; font-size: 0.75rem;">💻 Virtual Event</span>
       </div>
 
       <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">

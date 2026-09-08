@@ -31,9 +31,10 @@ public interface IEventRegistrationService
 
 public sealed class EventRegistrationService : IEventRegistrationService
 {
-private readonly IRegistrationRepository _registrationRepo;
+    private readonly IRegistrationRepository _registrationRepo;
     private readonly IPublicEventRepository _eventRepo;
     private readonly INotificationRepository _notifications;
+    private readonly Brownfield.ICapacityAlertService _capacityAlerts;
     private readonly IAuditLoggingService _audit;
     private readonly ILogger<EventRegistrationService> _logger;
 
@@ -41,12 +42,14 @@ private readonly IRegistrationRepository _registrationRepo;
         IRegistrationRepository registrationRepo,
         IPublicEventRepository eventRepo,
         INotificationRepository notifications,
+        Brownfield.ICapacityAlertService capacityAlerts,
         IAuditLoggingService audit,
         ILogger<EventRegistrationService> logger)
     {
         _registrationRepo = registrationRepo;
         _eventRepo = eventRepo;
         _notifications = notifications;
+        _capacityAlerts = capacityAlerts;
         _audit = audit;
         _logger = logger;
     }
@@ -71,6 +74,19 @@ case RegistrationOutcome.Confirmed:
                     await NotifyOrganizerOfNewRegistrationAsync(result.RegistrationId.Value, dto.EventId, cancellationToken);
                     await TryAuditAsync(attendeeUserId, AuditActionTypes.RegistrationCreated, "Registration",
                         result.RegistrationId!.Value, dto.EventId, cancellationToken);
+
+                    // Check and trigger capacity alerts
+                    try
+                    {
+                        var ev = await _eventRepo.GetPublishedEventByIdAsync(dto.EventId, cancellationToken);
+                        if (ev != null)
+                        {
+                            var confirmedCount = await _registrationRepo.CountConfirmedByEventAsync(dto.EventId, cancellationToken);
+                            await _capacityAlerts.CheckAndTriggerAlertsAsync(dto.EventId, confirmedCount, ev.Capacity, cancellationToken);
+                        }
+                    }
+                    catch { /* best-effort capacity alerts */ }
+
                     return new RegistrationServiceResult
                    {
                        Outcome = RegistrationServiceOutcome.Confirmed,

@@ -29,6 +29,9 @@
     <button (click)="activeTab = 'preferences'" class="tab-btn" [class.active]="activeTab === 'preferences'">
       🎯 Category Interests & Recommendation Preferences
     </button>
+    <button (click)="activeTab = 'personalized'; loadPersonalizedEvents()" class="tab-btn" [class.active]="activeTab === 'personalized'">
+      ✨ Personalized Recommendations
+    </button>
   </div>
 
   <!-- TAB 1: REGISTRATIONS & HISTORY -->
@@ -61,7 +64,7 @@
             <tr *ngFor="let item of activeEvents">
               <td style="font-weight: 600;">
                 {{ item.title }}
-                <div *ngIf="item.registrationId" style="margin-top: 4px;">
+                <div *ngIf="item.isVirtual && item.registrationId" style="margin-top: 4px;">
                   <button (click)="getVirtualLink(item.eventId, item.title)" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 2px 8px;">
                     🔗 Join Virtual Link
                   </button>
@@ -124,9 +127,17 @@
                 </span>
               </td>
               <td>
-                <button (click)="openFeedbackModal(item)" class="btn btn-emerald btn-sm">
-                  ⭐ Rate & Review
-                </button>
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                  <button *ngIf="!reviewedEventIds.has(item.eventId)" (click)="openFeedbackModal(item)" class="btn btn-emerald btn-sm">
+                    ⭐ Rate & Review
+                  </button>
+                  <span *ngIf="reviewedEventIds.has(item.eventId)" class="badge badge-confirmed" style="font-size: 0.8rem; padding: 4px 8px;">
+                    ✓ Reviewed
+                  </span>
+                  <button *ngIf="reviewedEventIds.has(item.eventId)" (click)="openFeedbackModal(item)" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 2px 6px;">
+                    ✏️ Edit
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -211,6 +222,62 @@
     </button>
   </div>
 
+  <!-- TAB: PERSONALIZED RECOMMENDATIONS (Category-Matched Only) -->
+  <div *ngIf="activeTab === 'personalized'">
+    <div class="glass-panel" style="padding: 28px; border-radius: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px;">✨ Personalized Events Tailored for You</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">
+            These upcoming events exclusively match the category tracks you have chosen in your preferences.
+          </p>
+        </div>
+        <button (click)="loadPersonalizedEvents()" class="btn btn-secondary btn-sm">🔄 Refresh Recommendations</button>
+      </div>
+
+      <div *ngIf="isLoadingPersonalized" style="text-align: center; padding: 40px; color: var(--text-muted);">
+        Analyzing your interests and fetching personalized events...
+      </div>
+
+      <div *ngIf="!isLoadingPersonalized && personalizedEvents.length === 0" style="text-align: center; padding: 40px; color: var(--text-muted);">
+        <p style="font-size: 1.05rem; margin-bottom: 12px;">No matching upcoming events found for your selected categories.</p>
+        <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 16px;">Try selecting more categories under the <strong>Category Interests</strong> tab to broaden your recommendations.</p>
+        <button (click)="activeTab = 'preferences'" class="btn btn-primary btn-sm">Adjust Category Preferences</button>
+      </div>
+
+      <div *ngIf="!isLoadingPersonalized && personalizedEvents.length > 0">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+          <div *ngFor="let ev of personalizedEvents" class="glass-panel" style="padding: 20px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glow); display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                <span class="badge badge-role" style="text-transform: none; font-size: 0.75rem;">
+                  ⭐ Category Match
+                </span>
+                <span *ngIf="ev.isVirtual" class="badge" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8;">Virtual</span>
+              </div>
+              <h4 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main);">{{ ev.title }}</h4>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+                {{ ev.description ? (ev.description | slice:0:100) + '...' : 'Join this session to connect with peers and industry experts.' }}
+              </p>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px;">
+                <span *ngFor="let cat of ev.categories" class="badge" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc; font-size: 0.7rem;">
+                  🏷️ {{ cat }}
+                </span>
+              </div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px;">
+              <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px;">
+                <div>📍 {{ ev.venue }}</div>
+                <div>🕒 {{ ev.startAtUtc | date:'medium' }}</div>
+              </div>
+              <a routerLink="/events" class="btn btn-primary btn-sm" style="width: 100%; text-align: center;">View & Register</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Virtual Meeting Link Modal -->
   <div *ngIf="virtualMeetingUrl" class="modal-overlay" (click)="virtualMeetingUrl = ''">
     <div class="modal-card" (click)="$event.stopPropagation()" style="max-width: 500px;">
@@ -233,9 +300,13 @@
   <div *ngIf="feedbackEvent" class="modal-overlay" (click)="closeFeedbackModal()">
     <div class="modal-card" (click)="$event.stopPropagation()" style="max-width: 500px;">
       <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 8px;">⭐ Submit Event Feedback</h3>
-      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
         {{ feedbackEvent.title }} • {{ feedbackEvent.venue }}
       </p>
+
+      <div *ngIf="modalFeedbackError" class="badge badge-closed" style="width: 100%; padding: 10px 14px; margin-bottom: 16px; border-radius: 8px; font-size: 0.85rem; justify-content: flex-start; text-transform: none; text-align: left; display: block;">
+        ⚠️ {{ modalFeedbackError }}
+      </div>
 
       <div class="form-group">
         <label class="form-label">Star Rating (1 to 5 Stars):</label>

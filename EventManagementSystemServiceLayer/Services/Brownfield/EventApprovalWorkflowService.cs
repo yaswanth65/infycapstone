@@ -80,9 +80,16 @@ namespace EventManagementSystemServiceLayer.Services.Brownfield
             req.Status = dto.Approve ? "Approved" : "Rejected";
             req.Remarks = dto.Remarks;
 
+            if (req.Event != null)
+            {
+                req.Event.ApprovalStatus = req.Status;
+                req.Event.RejectionReason = dto.Approve ? null : dto.Remarks;
+                req.Event.UpdatedAtUtc = DateTime.UtcNow;
+            }
+
             await _approvalRepo.ReviewAsync(req, ct);
 
-            var ev = await _eventRepo.GetByIdAsync(req.EventId, ct: ct);
+            var ev = req.Event ?? await _eventRepo.GetByIdAsync(req.EventId, ct: ct);
             if (ev != null)
             {
                 ev.ApprovalStatus = req.Status;

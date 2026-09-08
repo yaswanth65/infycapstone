@@ -80,12 +80,13 @@ export class ApiService {
   }
 
   // 3. Public Events
-  getPublicEvents(params?: { keyword?: string; fromUtc?: string; toUtc?: string; location?: string; onlyAvailable?: boolean }): Observable<PublicEventDto[]> {
+  getPublicEvents(params?: { keyword?: string; fromUtc?: string; toUtc?: string; location?: string; onlyAvailable?: boolean; categoryId?: number }): Observable<PublicEventDto[]> {
     let httpParams = new HttpParams();
     if (params?.keyword) httpParams = httpParams.set('keyword', params.keyword);
     if (params?.fromUtc) httpParams = httpParams.set('fromUtc', params.fromUtc);
     if (params?.toUtc) httpParams = httpParams.set('toUtc', params.toUtc);
     if (params?.location) httpParams = httpParams.set('location', params.location);
+    if (params?.categoryId) httpParams = httpParams.set('categoryId', params.categoryId.toString());
     if (params?.onlyAvailable !== undefined && params?.onlyAvailable !== null) {
       httpParams = httpParams.set('onlyAvailable', params.onlyAvailable.toString());
     }
@@ -323,6 +324,10 @@ export class ApiService {
 
   getEventFeedbackSummary(eventId: number): Observable<ApiResponse<FeedbackSummaryDto>> {
     return this.http.get<ApiResponse<FeedbackSummaryDto>>(`${this.baseUrl}/feedback/events/${eventId}/summary`);
+  }
+
+  getMyReviewedEventIds(): Observable<ApiResponse<number[]>> {
+    return this.http.get<ApiResponse<number[]>>(`${this.baseUrl}/feedback/my-reviews`);
   }
 
   // Recommendations & Preferences

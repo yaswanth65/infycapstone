@@ -1,4 +1,5 @@
 using EventManagementServiceDAL.Models;
+using EventManagementServiceDAL.Repositories.AdministratorRepo;
 using EventManagementServiceDAL.Repositories.AttendeeRepo;
 using EventManagementServiceDAL.Repositories.CommonRepo;
 using EventManagementServiceDAL.Repositories.EventManagerRepo;
@@ -29,46 +30,71 @@ Task<PaginatedResponse<EventResponseDto>> ListForOrganizerAsync(long organizerUs
        private const string ClosedStatus = "Closed";
        private const string CancelledStatus = "Cancelled";
 
-private readonly IEventRepository _events;
-        private readonly IRegistrationRepository _registrations;
-        private readonly INotificationRepository _notifications;
-        private readonly IAuditLoggingService _audit;
-        private readonly ILogger<EventManagementService> _logger;
+       private readonly IEventRepository _events;
+       private readonly IRegistrationRepository _registrations;
+       private readonly INotificationRepository _notifications;
+       private readonly IVenueRepository _venues;
+       private readonly ICategoryRepository _categories;
+       private readonly IAuditLoggingService _audit;
+       private readonly ILogger<EventManagementService> _logger;
 
-        public EventManagementService(
-            IEventRepository events,
-            IRegistrationRepository registrations,
-            INotificationRepository notifications,
-            IAuditLoggingService audit,
-            ILogger<EventManagementService> logger)
-        {
-            _events = events;
-            _registrations = registrations;
-            _notifications = notifications;
-            _audit = audit;
-            _logger = logger;
-        }
+       public EventManagementService(
+           IEventRepository events,
+           IRegistrationRepository registrations,
+           INotificationRepository notifications,
+           IVenueRepository venues,
+           ICategoryRepository categories,
+           IAuditLoggingService audit,
+           ILogger<EventManagementService> logger)
+       {
+           _events = events;
+           _registrations = registrations;
+           _notifications = notifications;
+           _venues = venues;
+           _categories = categories;
+           _audit = audit;
+           _logger = logger;
+       }
 
        public async Task<EventResponseDto?> CreateAsync(long organizerUserId, EventCreateDto dto, string ipAddress, CancellationToken ct = default)
        {
            try
            {
+               if (dto.VenueId.HasValue && dto.VenueId.Value > 0)
+               {
+                   var hasConflict = await _venues.HasScheduleOverlapAsync(dto.VenueId.Value, dto.StartAtUtc, dto.EndAtUtc, null, ct);
+                   if (hasConflict)
+                   {
+                       throw new InvalidOperationException("Venue conflict: The selected venue is already booked for an overlapping time window.");
+                   }
+               }
+
                var now = DateTime.UtcNow;
                var entity = new Event
                {
                    Title = dto.Title,
                    Description = dto.Description,
                    Venue = dto.Venue,
+                   VenueId = dto.VenueId > 0 ? dto.VenueId : null,
                    StartAtUtc = dto.StartAtUtc,
                    EndAtUtc = dto.EndAtUtc,
                    RegistrationOpenAtUtc = dto.RegistrationOpenAtUtc,
                    RegistrationCloseAtUtc = dto.RegistrationCloseAtUtc,
                    Capacity = dto.Capacity,
                    Status = DraftStatus,
+                   ApprovalStatus = "Draft",
+                   IsVirtual = dto.IsVirtual,
+                   VirtualMeetingUrl = dto.VirtualMeetingUrl,
                    OrganizerUserId = organizerUserId,
                    CreatedAtUtc = now
                };
                var created = await _events.AddAsync(entity, ct);
+
+               if (dto.CategoryIds != null && dto.CategoryIds.Any())
+               {
+                   await _categories.AssignCategoriesToEventAsync(created.EventId, dto.CategoryIds, ct);
+               }
+
                await _events.AddStatusHistoryAsync(new EventStatusHistory
                {
                    EventId = created.EventId,
@@ -81,6 +107,7 @@ private readonly IEventRepository _events;
                await _audit.LogAuditAsync(organizerUserId, AuditActionTypes.EventCreated, "Event", created.EventId, "Success", ipAddress, null, created.EventId);
                return await MapAsync(created, ct);
            }
+           catch (InvalidOperationException) { throw; }
            catch (Exception ex)
            {
                _logger.LogError(ex, "CreateAsync failed for organizer {OrganizerId}.", organizerUserId);
@@ -97,16 +124,34 @@ private readonly IEventRepository _events;
                if (existing.Status is ClosedStatus or CancelledStatus)
                    throw new InvalidOperationException("Cannot update an event that is Closed or Cancelled.");
 
+               if (dto.VenueId.HasValue && dto.VenueId.Value > 0)
+               {
+                   var hasConflict = await _venues.HasScheduleOverlapAsync(dto.VenueId.Value, dto.StartAtUtc, dto.EndAtUtc, existing.EventId, ct);
+                   if (hasConflict)
+                   {
+                       throw new InvalidOperationException("Venue conflict: The selected venue is already booked for an overlapping time window.");
+                   }
+               }
+
                existing.Title = dto.Title;
                existing.Description = dto.Description;
                existing.Venue = dto.Venue;
+               existing.VenueId = dto.VenueId > 0 ? dto.VenueId : null;
                existing.StartAtUtc = dto.StartAtUtc;
                existing.EndAtUtc = dto.EndAtUtc;
                existing.RegistrationOpenAtUtc = dto.RegistrationOpenAtUtc;
                existing.RegistrationCloseAtUtc = dto.RegistrationCloseAtUtc;
                existing.Capacity = dto.Capacity;
+               existing.IsVirtual = dto.IsVirtual;
+               existing.VirtualMeetingUrl = dto.VirtualMeetingUrl;
 
                await _events.UpdateAsync(existing, ct);
+
+               if (dto.CategoryIds != null)
+               {
+                   await _categories.AssignCategoriesToEventAsync(existing.EventId, dto.CategoryIds, ct);
+               }
+
                await _audit.LogAuditAsync(callerUserId, AuditActionTypes.EventCreated, "Event", existing.EventId, "Success", ipAddress, "{\"op\":\"update\"}", existing.EventId);
                return await MapAsync(existing, ct);
            }
@@ -214,6 +259,11 @@ public async Task<EventRosterResponseDto?> GetEventRosterAsync(long callerUserId
                if (!IsValidTransition(existing.Status, targetStatus))
                    throw new InvalidOperationException($"Illegal status transition from '{existing.Status}' to '{targetStatus}'.");
 
+               if (targetStatus == PublishedStatus && existing.ApprovalStatus != "Approved")
+               {
+                   throw new InvalidOperationException("Event cannot be published until it has been approved by an administrator.");
+               }
+
                var now = DateTime.UtcNow;
                var previous = existing.Status;
                existing.Status = targetStatus;
@@ -243,6 +293,20 @@ public async Task<EventRosterResponseDto?> GetEventRosterAsync(long callerUserId
                    _ => "EventUpdated"
                }, $"Event {targetStatus}", $"Event #{existing.EventId} moved to {targetStatus}.", existing.EventId, ct);
 
+               if (targetStatus == CancelledStatus)
+               {
+                   var registrations = await _registrations.GetRegistrationsForEventAsync(existing.EventId, ct);
+                   foreach (var reg in registrations)
+                   {
+                       await SafeNotify(reg.AttendeeUserId, "EventCancelled", "Event Cancelled", $"The event '{existing.Title}' has been cancelled by the organizer.", existing.EventId, ct);
+                   }
+                   var waitlist = await _registrations.GetWaitlistForEventAsync(existing.EventId, ct);
+                   foreach (var w in waitlist)
+                   {
+                       await SafeNotify(w.AttendeeUserId, "EventCancelled", "Event Cancelled", $"The waitlisted event '{existing.Title}' has been cancelled by the organizer.", existing.EventId, ct);
+                   }
+               }
+
                return await MapAsync(existing, ct);
            }
            catch (InvalidOperationException) { throw; }
@@ -268,28 +332,40 @@ public async Task<EventRosterResponseDto?> GetEventRosterAsync(long callerUserId
        {
            var confirmed = await _events.GetConfirmedRegistrationCountAsync(e.EventId, ct);
            var waitlist = await _events.GetWaitlistCountAsync(e.EventId, ct);
-           return new EventResponseDto
-           {
-               EventId = e.EventId,
-               Title = e.Title,
-               Description = e.Description,
-               Venue = e.Venue,
-               StartAtUtc = e.StartAtUtc,
-               EndAtUtc = e.EndAtUtc,
-               RegistrationOpenAtUtc = e.RegistrationOpenAtUtc,
-               RegistrationCloseAtUtc = e.RegistrationCloseAtUtc,
-               Capacity = e.Capacity,
-               Status = e.Status,
-               OrganizerUserId = e.OrganizerUserId,
-               OrganizerDisplayName = e.OrganizerUser?.DisplayName,
-               PublishedAtUtc = e.PublishedAtUtc,
-               ClosedAtUtc = e.ClosedAtUtc,
-               CancelledAtUtc = e.CancelledAtUtc,
-               CreatedAtUtc = e.CreatedAtUtc,
-               UpdatedAtUtc = e.UpdatedAtUtc,
-               ConfirmedRegistrations = confirmed,
-               WaitlistCount = waitlist
-           };
+           var catIds = (await _categories.GetCategoryIdsForEventAsync(e.EventId, ct)).ToList();
+           var allCats = await _categories.GetAllAsync(false, ct);
+           var catDict = allCats.ToDictionary(c => c.CategoryId, c => c.CategoryName);
+           var catNames = catIds.Where(id => catDict.ContainsKey(id)).Select(id => catDict[id]).ToList();
+
+            return new EventResponseDto
+            {
+                EventId = e.EventId,
+                Title = e.Title,
+                Description = e.Description,
+                Venue = e.Venue,
+                VenueId = e.VenueId,
+                StartAtUtc = e.StartAtUtc,
+                EndAtUtc = e.EndAtUtc,
+                RegistrationOpenAtUtc = e.RegistrationOpenAtUtc,
+                RegistrationCloseAtUtc = e.RegistrationCloseAtUtc,
+                Capacity = e.Capacity,
+                Status = e.Status,
+                ApprovalStatus = e.ApprovalStatus,
+                RejectionReason = e.RejectionReason,
+                OrganizerUserId = e.OrganizerUserId,
+                OrganizerDisplayName = e.OrganizerUser?.DisplayName,
+                PublishedAtUtc = e.PublishedAtUtc,
+                ClosedAtUtc = e.ClosedAtUtc,
+                CancelledAtUtc = e.CancelledAtUtc,
+                CreatedAtUtc = e.CreatedAtUtc,
+                UpdatedAtUtc = e.UpdatedAtUtc,
+                ConfirmedRegistrations = confirmed,
+                WaitlistCount = waitlist,
+                CategoryIds = catIds,
+                Categories = catNames,
+                IsVirtual = e.IsVirtual,
+                VirtualMeetingUrl = e.VirtualMeetingUrl
+            };
        }
 
        private async Task SafeNotify(long recipient, string type, string title, string message, long eventId, CancellationToken ct)

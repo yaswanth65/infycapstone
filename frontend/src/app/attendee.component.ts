@@ -17,16 +17,22 @@ export class AttendeeComponent implements OnInit {
   isLoading = false;
 
   // Active Tab
-  activeTab: 'registrations' | 'calendar' | 'preferences' = 'registrations';
+  activeTab: 'registrations' | 'calendar' | 'preferences' | 'personalized' = 'registrations';
 
   // Category Preferences
   allCategories: CategoryResponseDto[] = [];
   userPreferences: Record<number, boolean> = {};
 
+  // Personalized Recommended Events
+  personalizedEvents: any[] = [];
+  isLoadingPersonalized = false;
+
   // Feedback Submission Modal
   feedbackEvent: MyEventItemDto | null = null;
   feedbackRating = 5;
   feedbackComment = '';
+  modalFeedbackError = '';
+  reviewedEventIds: Set<number> = new Set<number>();
 
   // Virtual Access Link
   virtualMeetingUrl = '';
@@ -40,6 +46,18 @@ export class AttendeeComponent implements OnInit {
   ngOnInit() {
     this.loadMyEvents();
     this.loadCategoriesAndPreferences();
+    this.loadReviewedEventIds();
+  }
+
+  loadReviewedEventIds() {
+    this.apiService.getMyReviewedEventIds().subscribe({
+      next: (res) => {
+        if (res?.data) {
+          this.reviewedEventIds = new Set<number>(res.data);
+        }
+      },
+      error: () => {}
+    });
   }
 
   loadMyEvents() {
@@ -126,29 +144,51 @@ export class AttendeeComponent implements OnInit {
     });
   }
 
+  loadPersonalizedEvents() {
+    this.isLoadingPersonalized = true;
+    this.apiService.getRecommendations(20).subscribe({
+      next: (res) => {
+        this.personalizedEvents = res.data || [];
+        this.isLoadingPersonalized = false;
+      },
+      error: () => {
+        this.isLoadingPersonalized = false;
+      }
+    });
+  }
+
   openFeedbackModal(item: MyEventItemDto) {
     this.feedbackEvent = item;
     this.feedbackRating = 5;
     this.feedbackComment = '';
+    this.modalFeedbackError = '';
   }
 
   closeFeedbackModal() {
     this.feedbackEvent = null;
+    this.modalFeedbackError = '';
   }
 
   submitFeedback() {
     if (!this.feedbackEvent) return;
+    const eventId = this.feedbackEvent.eventId;
+    this.modalFeedbackError = '';
     this.apiService.submitFeedback({
-      eventId: this.feedbackEvent.eventId,
+      eventId: eventId,
       rating: Number(this.feedbackRating),
       comments: this.feedbackComment
     }).subscribe({
       next: () => {
+        this.reviewedEventIds.add(eventId);
         this.actionMessage = 'Thank you! Your feedback and rating have been recorded.';
         this.closeFeedbackModal();
       },
       error: (err) => {
-        this.actionError = err?.error?.message || 'Failed to submit feedback.';
+        const msg = err?.error?.message || 'Failed to submit feedback.';
+        this.modalFeedbackError = msg;
+        if (msg.includes('already submitted')) {
+          this.reviewedEventIds.add(eventId);
+        }
       }
     });
   }

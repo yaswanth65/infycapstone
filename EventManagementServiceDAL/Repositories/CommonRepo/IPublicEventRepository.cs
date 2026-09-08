@@ -8,6 +8,7 @@ public interface IPublicEventRepository
        DateTime? toUtc,
        string? location,
        bool? onlyAvailable,
+       int? categoryId = null,
        CancellationToken cancellationToken = default);
 
    Task<PublicEventListItem?> GetPublishedEventByIdAsync(long eventId, CancellationToken cancellationToken = default);
@@ -36,6 +37,9 @@ public sealed class PublicEventListItem
    public int WaitlistCount { get; set; }
    public string Status { get; set; } = null!;
    public List<WaitlistAttendeeItem> WaitlistAttendees { get; set; } = new();
+   public List<int> CategoryIds { get; set; } = new();
+   public List<string> Categories { get; set; } = new();
+   public bool IsVirtual { get; set; }
 
    public int AvailableCapacity => Math.Max(0, Capacity - ConfirmedCount);
    public bool WaitlistAvailable => ConfirmedCount >= Capacity;

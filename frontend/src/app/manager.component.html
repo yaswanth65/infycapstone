@@ -88,20 +88,45 @@
               <span *ngIf="ev.waitlistCount > 0" class="badge badge-waiting" style="margin-left: 4px;">{{ ev.waitlistCount }} Waiting</span>
             </td>
             <td>
-              <span class="badge" [class.badge-draft]="ev.status === 'Draft'" [class.badge-published]="ev.status === 'Published'" [class.badge-closed]="ev.status === 'Closed' || ev.status === 'Cancelled'">
-                {{ ev.status }}
-              </span>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span class="badge" [class.badge-draft]="ev.status === 'Draft'" [class.badge-published]="ev.status === 'Published'" [class.badge-closed]="ev.status === 'Closed' || ev.status === 'Cancelled'">
+                  {{ ev.status }}
+                </span>
+                <span *ngIf="ev.status === 'Draft' && ev.approvalStatus === 'Submitted'" class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.72rem;">
+                  ⏳ Waiting Approval
+                </span>
+                <span *ngIf="ev.status === 'Draft' && ev.approvalStatus === 'Approved'" class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 0.72rem;">
+                  ✓ Approved
+                </span>
+                <span *ngIf="ev.status === 'Draft' && ev.approvalStatus === 'Rejected'" class="badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.72rem;" [title]="ev.rejectionReason || 'No details provided'">
+                  ✕ Rejected
+                </span>
+                <span *ngIf="ev.status === 'Draft' && (!ev.approvalStatus || ev.approvalStatus === 'Draft')" class="badge" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); font-size: 0.72rem;">
+                  📝 Not Submitted
+                </span>
+              </div>
+              <div *ngIf="ev.status === 'Draft' && ev.approvalStatus === 'Rejected' && ev.rejectionReason" style="font-size: 0.75rem; color: #f87171; margin-top: 4px; max-width: 150px;">
+                Reason: {{ ev.rejectionReason }}
+              </div>
             </td>
             <td>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                 <button *ngIf="ev.status === 'Draft'" (click)="openEditForm(ev)" class="btn btn-secondary btn-sm">Edit</button>
-                <button *ngIf="ev.status === 'Draft'" (click)="submitForApproval(ev.eventId)" class="btn btn-sm" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4);">
-                  🛡️ Approval
+                <button *ngIf="ev.status === 'Draft' && ev.approvalStatus !== 'Approved' && ev.approvalStatus !== 'Submitted'" (click)="openSubmitApprovalModal(ev.eventId)" class="btn btn-sm" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4);">
+                  🛡️ Submit for Approval
+                </button>
+                <button *ngIf="ev.status === 'Draft' && ev.approvalStatus === 'Rejected'" (click)="openSubmitApprovalModal(ev.eventId)" class="btn btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">
+                  🔄 Re-submit
+                </button>
+                <button (click)="openViewFeedbackModal(ev.eventId, ev.title)" class="btn btn-secondary btn-sm" title="View attendee feedback & reviews">
+                  ⭐ Feedback
                 </button>
                 <button (click)="openCapacityAlertModal(ev.eventId)" class="btn btn-secondary btn-sm">
                   🔔 Alerts
                 </button>
-                <button *ngIf="ev.status === 'Draft'" (click)="publish(ev.eventId)" class="btn btn-emerald btn-sm">Publish</button>
+                <button *ngIf="ev.status === 'Draft' && ev.approvalStatus === 'Approved'" (click)="publish(ev.eventId)" class="btn btn-emerald btn-sm">
+                  🚀 Publish
+                </button>
                 <button *ngIf="ev.status === 'Published'" (click)="close(ev.eventId)" class="btn btn-secondary btn-sm">Close</button>
                 <button *ngIf="ev.status === 'Published' || ev.status === 'Draft'" (click)="cancel(ev.eventId)" class="btn btn-rose btn-sm">Cancel</button>
               </div>
@@ -118,10 +143,11 @@
       {{ isEditing ? 'Edit Event #' + editingEventId : 'Create New Event' }}
     </h3>
 
-    <form (ngSubmit)="saveEvent()">
+    <form (ngSubmit)="saveEvent()" novalidate>
       <div class="form-group">
         <label for="eventTitle">Event Title *</label>
-        <input type="text" id="eventTitle" [(ngModel)]="formModel.title" name="title" class="input-field" placeholder="e.g. AI & Cloud Architecture Summit 2026" required>
+        <input type="text" id="eventTitle" [(ngModel)]="formModel.title" name="title" class="input-field" [class.input-invalid]="eventFormSubmitted && !formModel.title" placeholder="e.g. AI & Cloud Architecture Summit 2026" required>
+        <span *ngIf="eventFormSubmitted && !formModel.title" class="field-error">Event title is required.</span>
       </div>
 
       <div class="form-group">
@@ -132,26 +158,61 @@
             <option *ngFor="let v of venues" [value]="v.venueId">{{ v.name }} (Cap: {{ v.capacity }})</option>
           </select>
         </div>
-        <input type="text" id="eventVenue" [(ngModel)]="formModel.venue" name="venue" class="input-field" placeholder="e.g. Auditorium A or Online Teams" required>
-        <div *ngIf="venueCheckMessage" style="font-size: 0.8rem; margin-top: 4px;" [style.color]="venueCheckAvailable ? '#34d399' : '#fb7185'">
-          {{ venueCheckMessage }}
+        <input type="text" id="eventVenue" [(ngModel)]="formModel.venue" (input)="venueCheckAvailable = null; venueCheckMessage = ''; venueConflictError = ''" name="venue" class="input-field" [class.input-invalid]="(eventFormSubmitted && !formModel.venue) || venueCheckAvailable === false || !!venueConflictError" placeholder="e.g. Auditorium A or Online Teams" required>
+        <span *ngIf="eventFormSubmitted && !formModel.venue" class="field-error">Venue name or location is required.</span>
+        <span *ngIf="venueConflictError" class="field-error">⚠️ {{ venueConflictError }}</span>
+        <div *ngIf="venueCheckMessage" style="font-size: 0.8rem; margin-top: 4px; font-weight: 600;" [style.color]="venueCheckAvailable ? '#34d399' : '#fb7185'">
+          <span *ngIf="venueCheckAvailable">✓ {{ venueCheckMessage }}</span>
+          <span *ngIf="venueCheckAvailable === false && !venueConflictError">⚠️ {{ venueCheckMessage }}</span>
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <div class="form-group">
           <label for="startAtUtc">Start Date & Time (UTC) *</label>
-          <input type="datetime-local" id="startAtUtc" [(ngModel)]="formModel.startAtUtc" name="startAtUtc" class="input-field" required>
+          <input type="datetime-local" id="startAtUtc" [(ngModel)]="formModel.startAtUtc" (change)="checkVenueAvailability()" name="startAtUtc" class="input-field" [class.input-invalid]="eventFormSubmitted && !formModel.startAtUtc" required>
+          <span *ngIf="eventFormSubmitted && !formModel.startAtUtc" class="field-error">Start date is required.</span>
         </div>
         <div class="form-group">
           <label for="endAtUtc">End Date & Time (UTC) *</label>
-          <input type="datetime-local" id="endAtUtc" [(ngModel)]="formModel.endAtUtc" name="endAtUtc" class="input-field" required>
+          <input type="datetime-local" id="endAtUtc" [(ngModel)]="formModel.endAtUtc" (change)="checkVenueAvailability()" name="endAtUtc" class="input-field" [class.input-invalid]="eventFormSubmitted && (!formModel.endAtUtc || formModel.endAtUtc <= formModel.startAtUtc)" required>
+          <span *ngIf="eventFormSubmitted && !formModel.endAtUtc" class="field-error">End date is required.</span>
+          <span *ngIf="eventFormSubmitted && formModel.startAtUtc && formModel.endAtUtc && formModel.endAtUtc <= formModel.startAtUtc" class="field-error">End date must be after start date.</span>
         </div>
       </div>
 
       <div class="form-group">
         <label for="eventCapacity">Event Capacity (Seats) *</label>
-        <input type="number" id="eventCapacity" [(ngModel)]="formModel.capacity" name="capacity" class="input-field" min="1" required>
+        <input type="number" id="eventCapacity" [(ngModel)]="formModel.capacity" name="capacity" class="input-field" [class.input-invalid]="eventFormSubmitted && (!formModel.capacity || formModel.capacity <= 0)" min="1" required>
+        <span *ngIf="eventFormSubmitted && (!formModel.capacity || formModel.capacity <= 0)" class="field-error">Capacity must be at least 1.</span>
+      </div>
+
+      <!-- Categories Multi-Select Selection -->
+      <div class="form-group">
+        <label>Categories</label>
+        <div *ngIf="categories.length > 0" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+          <label *ngFor="let cat of categories" 
+                 style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; border: 1px solid var(--border-glow); background: rgba(255,255,255,0.03);"
+                 [style.background]="isCategorySelected(cat.categoryId) ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.03)'"
+                 [style.borderColor]="isCategorySelected(cat.categoryId) ? 'var(--primary)' : 'var(--border-glow)'">
+            <input type="checkbox" [checked]="isCategorySelected(cat.categoryId)" (change)="toggleCategorySelection(cat.categoryId)" style="accent-color: var(--primary);">
+            {{ cat.categoryName }}
+          </label>
+        </div>
+        <span *ngIf="categories.length === 0" style="font-size: 0.8rem; color: var(--text-dim);">No categories available.</span>
+      </div>
+
+      <!-- Virtual Event Toggle & URL -->
+      <div style="margin: 16px 0; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid var(--border-glow);">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;">
+          <input type="checkbox" [(ngModel)]="formModel.isVirtual" name="isVirtual" style="accent-color: var(--primary); width: 18px; height: 18px;">
+          🌐 This is a Virtual / Online Event
+        </label>
+        <div *ngIf="formModel.isVirtual" class="form-group" style="margin-top: 12px; margin-bottom: 0;">
+          <label for="virtualUrl">Virtual Meeting URL *</label>
+          <input type="url" id="virtualUrl" [(ngModel)]="formModel.virtualMeetingUrl" name="virtualMeetingUrl" class="input-field" [class.input-invalid]="eventFormSubmitted && formModel.isVirtual && !formModel.virtualMeetingUrl" placeholder="https://teams.microsoft.com/meet/... or https://meet.google.com/..." required>
+          <span *ngIf="eventFormSubmitted && formModel.isVirtual && !formModel.virtualMeetingUrl" class="field-error">Virtual meeting link is required for virtual events.</span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -625,6 +686,93 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit for Approval Modal -->
+  <div *ngIf="submitApprovalModalData" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
+    <div class="glass-panel" style="width: 100%; max-width: 520px; padding: 28px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-card);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.25rem; font-weight: 800;">🛡️ Submit Event for Approval</h3>
+        <button (click)="closeSubmitApprovalModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+        Submitting Event #{{ submitApprovalModalData.eventId }} for administrative review. Please specify details or justification for the administrator.
+      </p>
+      <div class="form-group">
+        <label for="approvalRemarks">Submission Reason / Remarks *</label>
+        <textarea id="approvalRemarks" [(ngModel)]="submitApprovalModalData.remarks" class="textarea-field" rows="3" placeholder="Provide notes or justification for the admin review..."></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button (click)="closeSubmitApprovalModal()" class="btn btn-secondary">Cancel</button>
+        <button (click)="confirmSubmitApproval()" [disabled]="!submitApprovalModalData.remarks.trim()" class="btn btn-primary">
+          Confirm & Submit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Feedback Modal -->
+  <div *ngIf="selectedFeedbackEventId" style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
+    <div class="glass-panel" style="width: 100%; max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 28px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-card);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h3 style="font-size: 1.25rem; font-weight: 800;">⭐ Feedback & Reviews</h3>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">{{ selectedFeedbackEventTitle }} (Event #{{ selectedFeedbackEventId }})</div>
+        </div>
+        <button (click)="closeViewFeedbackModal()" style="background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+      </div>
+
+      <div *ngIf="isLoadingEventFeedback" style="text-align: center; padding: 30px; color: var(--text-muted);">
+        Loading attendee feedback...
+      </div>
+
+      <div *ngIf="!isLoadingEventFeedback && eventFeedbackSummary">
+        <!-- Summary Metrics Cards -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+          <div class="glass-panel" style="padding: 16px; text-align: center; border-radius: 12px;">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #fbbf24;">★ {{ eventFeedbackSummary.averageRating | number:'1.1-1' }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">AVERAGE RATING</div>
+          </div>
+          <div class="glass-panel" style="padding: 16px; text-align: center; border-radius: 12px;">
+            <div style="font-size: 1.8rem; font-weight: 800; color: #38bdf8;">{{ eventFeedbackSummary.totalCount }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">TOTAL REVIEWS</div>
+          </div>
+        </div>
+
+        <!-- Ratings Breakdown -->
+        <div *ngIf="eventFeedbackSummary.starDistribution" style="margin-bottom: 20px; padding: 14px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid var(--border-glow);">
+          <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); margin-bottom: 10px;">RATING DISTRIBUTION</div>
+          <div *ngFor="let stars of [5, 4, 3, 2, 1]" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.8rem;">
+            <span style="width: 32px; text-align: right; color: #fbbf24;">{{ stars }} ★</span>
+            <div style="flex: 1; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
+              <div [style.width.%]="eventFeedbackSummary.totalCount > 0 ? ((eventFeedbackSummary.starDistribution[stars] || 0) / eventFeedbackSummary.totalCount * 100) : 0"
+                   style="height: 100%; background: #fbbf24; border-radius: 4px;"></div>
+            </div>
+            <span style="width: 24px; color: var(--text-muted); font-size: 0.75rem;">{{ eventFeedbackSummary.starDistribution[stars] || 0 }}</span>
+          </div>
+        </div>
+
+        <!-- Recent Reviews List -->
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); margin-bottom: 10px;">ATTENDEE REVIEWS</div>
+        <div *ngIf="!eventFeedbackSummary.recentReviews || eventFeedbackSummary.recentReviews.length === 0" style="text-align: center; color: var(--text-muted); padding: 20px;">
+          No written feedback comments submitted yet.
+        </div>
+        <div *ngIf="eventFeedbackSummary.recentReviews && eventFeedbackSummary.recentReviews.length > 0" style="display: flex; flex-direction: column; gap: 10px;">
+          <div *ngFor="let r of eventFeedbackSummary.recentReviews" style="padding: 12px 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid var(--border-glow);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-main);">{{ r.attendeeName || 'Verified Attendee' }}</span>
+              <span style="color: #fbbf24; font-size: 0.85rem;">{{ '★'.repeat(r.rating) }}{{ '☆'.repeat(5 - r.rating) }}</span>
+            </div>
+            <p *ngIf="r.comments" style="font-size: 0.85rem; color: var(--text-muted); margin: 4px 0 0;">{{ r.comments }}</p>
+            <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 4px;">{{ r.createdAtUtc | date:'mediumDate' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button (click)="closeViewFeedbackModal()" class="btn btn-secondary">Close</button>
       </div>
     </div>
   </div>

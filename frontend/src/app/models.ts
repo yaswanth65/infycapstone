@@ -76,6 +76,9 @@ export interface PublicEventDto {
   status: string;
   waitlistAttendees?: WaitlistAttendeeItem[];
   capacityMessage?: string;
+  categoryIds?: number[];
+  categories?: string[];
+  isVirtual?: boolean;
 }
 
 export interface RegisterEventDto {
@@ -110,6 +113,7 @@ export interface MyEventItemDto {
   waitlistPosition?: number;
   attendanceStatus?: string;
   isPast: boolean;
+  isVirtual?: boolean;
 }
 
 export interface MyEventsDto {
@@ -121,11 +125,15 @@ export interface EventCreateDto {
   title: string;
   description?: string;
   venue: string;
+  venueId?: number;
   startAtUtc: string;
   endAtUtc: string;
   registrationOpenAtUtc?: string;
   registrationCloseAtUtc?: string;
   capacity: number;
+  categoryIds?: number[];
+  isVirtual?: boolean;
+  virtualMeetingUrl?: string;
 }
 
 export interface EventUpdateDto extends EventCreateDto {
@@ -141,12 +149,15 @@ export interface EventResponseDto {
   title: string;
   description?: string;
   venue: string;
+  venueId?: number;
   startAtUtc: string;
   endAtUtc: string;
   registrationOpenAtUtc?: string;
   registrationCloseAtUtc?: string;
   capacity: number;
   status: string;
+  approvalStatus?: string;
+  rejectionReason?: string;
   organizerUserId: number;
   organizerDisplayName?: string;
   publishedAtUtc?: string;
@@ -156,6 +167,10 @@ export interface EventResponseDto {
   updatedAtUtc?: string;
   confirmedRegistrations: number;
   waitlistCount: number;
+  categoryIds?: number[];
+  categories?: string[];
+  isVirtual?: boolean;
+  virtualMeetingUrl?: string;
 }
 
 export interface AttendanceRecordDto {

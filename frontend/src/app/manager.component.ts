@@ -12,7 +12,8 @@ import {
   CategoryResponseDto,
   VenueResponseDto,
   RecurringEventCreateDto,
-  CapacityAlertResponseDto
+  CapacityAlertResponseDto,
+  FeedbackSummaryDto
 } from './models';
 
 @Component({
@@ -42,13 +43,29 @@ export class ManagerComponent implements OnInit {
     title: '',
     description: '',
     venue: '',
+    venueId: undefined,
     startAtUtc: '',
     endAtUtc: '',
-    capacity: 50
+    capacity: 50,
+    categoryIds: [],
+    isVirtual: false,
+    virtualMeetingUrl: ''
   };
+  eventFormSubmitted = false;
+  selectedCategoryIds: number[] = [];
   selectedVenueId: number | null = null;
   venueCheckMessage: string = '';
   venueCheckAvailable: boolean | null = null;
+  venueConflictError: string = '';
+
+  // Approval Submission Modal State
+  submitApprovalModalData: { eventId: number; remarks: string } | null = null;
+
+  // View Feedback Modal State
+  selectedFeedbackEventId: number | null = null;
+  selectedFeedbackEventTitle: string = '';
+  eventFeedbackSummary: FeedbackSummaryDto | null = null;
+  isLoadingEventFeedback: boolean = false;
 
   // Recurring Event Form Model
   recurringModel: RecurringEventCreateDto = {
@@ -116,6 +133,19 @@ export class ManagerComponent implements OnInit {
     });
   }
 
+  toggleCategorySelection(catId: number) {
+    const idx = this.selectedCategoryIds.indexOf(catId);
+    if (idx >= 0) {
+      this.selectedCategoryIds.splice(idx, 1);
+    } else {
+      this.selectedCategoryIds.push(catId);
+    }
+  }
+
+  isCategorySelected(catId: number): boolean {
+    return this.selectedCategoryIds.includes(catId);
+  }
+
   setTab(tab: 'events' | 'create' | 'recurring' | 'roster' | 'requests' | 'attendance') {
     this.activeTab = tab;
     this.message = '';
@@ -171,15 +201,25 @@ export class ManagerComponent implements OnInit {
   openCreateForm() {
     this.isEditing = false;
     this.editingEventId = null;
+    this.eventFormSubmitted = false;
+    this.selectedVenueId = null;
+    this.selectedCategoryIds = [];
+    this.venueCheckMessage = '';
+    this.venueCheckAvailable = null;
+    this.venueConflictError = '';
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 16);
     const dayAfter = new Date(Date.now() + 172800000).toISOString().slice(0, 16);
     this.formModel = {
       title: '',
       description: '',
       venue: '',
+      venueId: undefined,
       startAtUtc: tomorrow,
       endAtUtc: dayAfter,
-      capacity: 50
+      capacity: 50,
+      categoryIds: [],
+      isVirtual: false,
+      virtualMeetingUrl: ''
     };
     this.setTab('create');
   }
@@ -187,20 +227,38 @@ export class ManagerComponent implements OnInit {
   openEditForm(event: EventResponseDto) {
     this.isEditing = true;
     this.editingEventId = event.eventId;
+    this.eventFormSubmitted = false;
+    this.selectedVenueId = event.venueId || null;
+    this.selectedCategoryIds = event.categoryIds ? [...event.categoryIds] : [];
+    this.venueCheckMessage = '';
+    this.venueCheckAvailable = null;
+    this.venueConflictError = '';
     this.formModel = {
       title: event.title,
       description: event.description || '',
       venue: event.venue,
+      venueId: event.venueId || undefined,
       startAtUtc: event.startAtUtc ? event.startAtUtc.slice(0, 16) : '',
       endAtUtc: event.endAtUtc ? event.endAtUtc.slice(0, 16) : '',
-      capacity: event.capacity
+      capacity: event.capacity,
+      categoryIds: this.selectedCategoryIds,
+      isVirtual: event.isVirtual || false,
+      virtualMeetingUrl: event.virtualMeetingUrl || ''
     };
+    if (this.selectedVenueId) {
+      this.checkVenueAvailability();
+    }
     this.setTab('create');
   }
 
   saveEvent() {
-    if (!this.formModel.title || !this.formModel.venue || !this.formModel.startAtUtc || !this.formModel.endAtUtc || this.formModel.capacity <= 0) {
-      this.errorMessage = 'Please complete all required fields with valid capacity (>0).';
+    this.eventFormSubmitted = true;
+    this.venueConflictError = '';
+    if (!this.formModel.title || !this.formModel.venue || !this.formModel.startAtUtc || !this.formModel.endAtUtc || !this.formModel.capacity || this.formModel.capacity <= 0) {
+      return;
+    }
+
+    if (this.formModel.isVirtual && (!this.formModel.virtualMeetingUrl || !this.formModel.virtualMeetingUrl.trim())) {
       return;
     }
 
@@ -217,8 +275,16 @@ export class ManagerComponent implements OnInit {
       return;
     }
 
+    if (this.venueCheckAvailable === false) {
+      this.venueConflictError = 'Venue conflict: The selected venue is not available for this time range. Please select another time or venue.';
+      this.errorMessage = this.venueConflictError;
+      return;
+    }
+
     const payload = {
       ...this.formModel,
+      categoryIds: this.selectedCategoryIds,
+      venueId: this.selectedVenueId || undefined,
       startAtUtc: this.toUtcIso(this.formModel.startAtUtc),
       endAtUtc: this.toUtcIso(this.formModel.endAtUtc)
     };
@@ -229,38 +295,60 @@ export class ManagerComponent implements OnInit {
         next: (res) => {
           if (res.success) {
             this.message = 'Event details updated successfully.';
+            this.eventFormSubmitted = false;
             this.setTab('events');
           } else {
             this.errorMessage = res.message;
           }
         },
-        error: (err) => this.errorMessage = err?.error?.message || 'Failed to update event.'
+        error: (err) => {
+          const msg = err?.error?.message || 'Failed to update event.';
+          this.errorMessage = msg;
+          if (msg.toLowerCase().includes('venue conflict') || msg.toLowerCase().includes('overlap') || msg.toLowerCase().includes('already booked')) {
+            this.venueConflictError = msg;
+          }
+        }
       });
     } else {
       this.apiService.createEvent(payload).subscribe({
         next: (res) => {
           if (res.success) {
             this.message = 'Event created successfully in Draft status.';
+            this.eventFormSubmitted = false;
             this.setTab('events');
           } else {
             this.errorMessage = res.message;
           }
         },
-        error: (err) => this.errorMessage = err?.error?.message || 'Failed to create event.'
+        error: (err) => {
+          const msg = err?.error?.message || 'Failed to create event.';
+          this.errorMessage = msg;
+          if (msg.toLowerCase().includes('venue conflict') || msg.toLowerCase().includes('overlap') || msg.toLowerCase().includes('already booked')) {
+            this.venueConflictError = msg;
+          }
+        }
       });
     }
   }
 
-  onVenueSelect(venueId: number) {
-    this.selectedVenueId = venueId;
-    const v = this.venues.find(item => item.venueId === Number(venueId));
-    if (v) {
-      this.formModel.venue = `${v.name} (${v.address || ''})`;
-      this.checkVenueAvailability();
+  onVenueSelect(venueId: number | null) {
+    this.selectedVenueId = venueId ? Number(venueId) : null;
+    this.formModel.venueId = this.selectedVenueId || undefined;
+    this.venueConflictError = '';
+    if (this.selectedVenueId) {
+      const v = this.venues.find(item => item.venueId === Number(this.selectedVenueId));
+      if (v) {
+        this.formModel.venue = v.name;
+        this.checkVenueAvailability();
+      }
+    } else {
+      this.venueCheckMessage = '';
+      this.venueCheckAvailable = null;
     }
   }
 
   checkVenueAvailability() {
+    this.venueConflictError = '';
     if (!this.selectedVenueId || !this.formModel.startAtUtc || !this.formModel.endAtUtc) return;
     this.apiService.checkVenueAvailability({
       venueId: this.selectedVenueId,
@@ -271,6 +359,9 @@ export class ManagerComponent implements OnInit {
       next: (res) => {
         this.venueCheckAvailable = res.data.isAvailable;
         this.venueCheckMessage = res.data.message;
+        if (!res.data.isAvailable) {
+          this.venueConflictError = res.data.message;
+        }
       },
       error: () => {
         this.venueCheckAvailable = null;
@@ -279,15 +370,52 @@ export class ManagerComponent implements OnInit {
     });
   }
 
-  submitForApproval(eventId: number) {
-    const remarks = prompt('Enter any notes/remarks for Admin review (optional):') || 'Submitted for publication review';
+  openSubmitApprovalModal(eventId: number) {
+    this.submitApprovalModalData = {
+      eventId,
+      remarks: 'Draft event is ready and submitted for administrative approval.'
+    };
+  }
+
+  closeSubmitApprovalModal() {
+    this.submitApprovalModalData = null;
+  }
+
+  confirmSubmitApproval() {
+    if (!this.submitApprovalModalData) return;
+    const { eventId, remarks } = this.submitApprovalModalData;
     this.apiService.submitEventForApproval({ eventId, remarks }).subscribe({
       next: () => {
         this.message = 'Event submitted for administrator review and approval.';
+        this.closeSubmitApprovalModal();
         this.loadEvents();
       },
-      error: (err) => this.errorMessage = err?.error?.message || 'Failed to submit event for approval.'
+      error: (err) => {
+        this.errorMessage = err?.error?.message || 'Failed to submit event for approval.';
+        this.closeSubmitApprovalModal();
+      }
     });
+  }
+
+  openViewFeedbackModal(eventId: number, title: string) {
+    this.selectedFeedbackEventId = eventId;
+    this.selectedFeedbackEventTitle = title;
+    this.isLoadingEventFeedback = true;
+    this.eventFeedbackSummary = null;
+    this.apiService.getEventFeedbackSummary(eventId).subscribe({
+      next: (res) => {
+        this.eventFeedbackSummary = res.data || null;
+        this.isLoadingEventFeedback = false;
+      },
+      error: () => {
+        this.isLoadingEventFeedback = false;
+      }
+    });
+  }
+
+  closeViewFeedbackModal() {
+    this.selectedFeedbackEventId = null;
+    this.eventFeedbackSummary = null;
   }
 
   // Capacity Alerts

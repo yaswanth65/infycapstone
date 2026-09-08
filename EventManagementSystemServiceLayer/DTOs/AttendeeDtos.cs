@@ -9,6 +9,7 @@ public sealed class PublicEventQueryDto
    public DateTime? ToUtc { get; set; }
    public string? Location { get; set; }
    public bool? OnlyAvailable { get; set; }
+   public int? CategoryId { get; set; }
 }
 
 public sealed class PublicEventDto
@@ -28,6 +29,9 @@ public sealed class PublicEventDto
    public bool WaitlistAvailable { get; set; }
    public string Status { get; set; } = null!;
    public List<WaitlistAttendeeItem> WaitlistAttendees { get; set; } = new();
+   public List<int> CategoryIds { get; set; } = new();
+   public List<string> Categories { get; set; } = new();
+   public bool IsVirtual { get; set; }
    public string CapacityMessage { get; set; } = string.Empty;
 }
 
@@ -67,6 +71,7 @@ public sealed class MyEventItemDto
    public int? WaitlistPosition { get; set; }
    public string? AttendanceStatus { get; set; }
    public bool IsPast { get; set; }
+   public bool IsVirtual { get; set; }
 }
 
 public sealed class MyEventsDto

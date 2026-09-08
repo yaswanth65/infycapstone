@@ -26,7 +26,7 @@ public sealed class PublicEventService : IPublicEventService
        try
        {
            var items = await _repo.SearchPublishedEventsAsync(
-               query.Keyword, query.FromUtc, query.ToUtc, query.Location, query.OnlyAvailable, cancellationToken);
+               query.Keyword, query.FromUtc, query.ToUtc, query.Location, query.OnlyAvailable, query.CategoryId, cancellationToken);
            return items.Select(Map).ToList();
        }
        catch (Exception ex)
@@ -66,6 +66,9 @@ public sealed class PublicEventService : IPublicEventService
        WaitlistCount = e.WaitlistCount,
        WaitlistAvailable = e.WaitlistAvailable,
        Status = e.Status,
+       IsVirtual = e.IsVirtual,
+       CategoryIds = e.CategoryIds,
+       Categories = e.Categories,
        WaitlistAttendees = e.WaitlistAttendees,
        CapacityMessage = e.CapacityMessage
    };

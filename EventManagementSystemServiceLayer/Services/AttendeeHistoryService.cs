@@ -33,6 +33,12 @@ public sealed class AttendeeHistoryService : IAttendeeHistoryService
            foreach (var r in registrations)
            {
                var ev = r.Event;
+               // If the event itself was cancelled, it shouldn't show up in active dashboard
+               if (ev.Status == "Cancelled" || r.RegistrationStatus == "Cancelled")
+               {
+                   continue;
+               }
+
                var isPast = ev.EndAtUtc <= now;
                var item = new MyEventItemDto
                {
@@ -45,13 +51,19 @@ public sealed class AttendeeHistoryService : IAttendeeHistoryService
                    ItemType = "Registration",
                    Status = r.RegistrationStatus,
                    AttendanceStatus = r.AttendanceRecord?.AttendanceStatus,
-                   IsPast = isPast
+                   IsPast = isPast,
+                   IsVirtual = ev.IsVirtual
                };
                if (isPast) result.Past.Add(item); else result.Active.Add(item);
            }
 
            foreach (var w in waitlists)
            {
+               if (w.Event.Status == "Cancelled")
+               {
+                   continue;
+               }
+
                var position = await _repo.GetWaitlistPositionAsync(w.WaitlistEntryId, cancellationToken);
                result.Active.Add(new MyEventItemDto
                {
@@ -64,7 +76,8 @@ public sealed class AttendeeHistoryService : IAttendeeHistoryService
                    ItemType = "Waitlist",
                    Status = w.WaitlistStatus,
                    WaitlistPosition = position,
-                   IsPast = false
+                   IsPast = false,
+                   IsVirtual = w.Event.IsVirtual
                });
            }
 

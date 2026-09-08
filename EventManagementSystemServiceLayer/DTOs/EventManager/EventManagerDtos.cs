@@ -5,11 +5,15 @@ namespace EventManagementSystemServiceLayer.DTOs.EventManager
        public string Title { get; set; } = null!;
        public string? Description { get; set; }
        public string Venue { get; set; } = null!;
+       public long? VenueId { get; set; }
        public DateTime StartAtUtc { get; set; }
        public DateTime EndAtUtc { get; set; }
        public DateTime? RegistrationOpenAtUtc { get; set; }
        public DateTime? RegistrationCloseAtUtc { get; set; }
        public int Capacity { get; set; }
+       public List<int>? CategoryIds { get; set; }
+       public bool IsVirtual { get; set; }
+       public string? VirtualMeetingUrl { get; set; }
    }
 
    public class EventUpdateDto
@@ -18,11 +22,15 @@ namespace EventManagementSystemServiceLayer.DTOs.EventManager
        public string Title { get; set; } = null!;
        public string? Description { get; set; }
        public string Venue { get; set; } = null!;
+       public long? VenueId { get; set; }
        public DateTime StartAtUtc { get; set; }
        public DateTime EndAtUtc { get; set; }
        public DateTime? RegistrationOpenAtUtc { get; set; }
        public DateTime? RegistrationCloseAtUtc { get; set; }
        public int Capacity { get; set; }
+       public List<int>? CategoryIds { get; set; }
+       public bool IsVirtual { get; set; }
+       public string? VirtualMeetingUrl { get; set; }
    }
 
    public class EventStatusTransitionDto
@@ -37,12 +45,15 @@ namespace EventManagementSystemServiceLayer.DTOs.EventManager
        public string Title { get; set; } = null!;
        public string? Description { get; set; }
        public string Venue { get; set; } = null!;
+       public long? VenueId { get; set; }
        public DateTime StartAtUtc { get; set; }
        public DateTime EndAtUtc { get; set; }
        public DateTime? RegistrationOpenAtUtc { get; set; }
        public DateTime? RegistrationCloseAtUtc { get; set; }
        public int Capacity { get; set; }
        public string Status { get; set; } = null!;
+       public string ApprovalStatus { get; set; } = "Approved";
+       public string? RejectionReason { get; set; }
        public long OrganizerUserId { get; set; }
        public string? OrganizerDisplayName { get; set; }
        public DateTime? PublishedAtUtc { get; set; }
@@ -52,6 +63,10 @@ namespace EventManagementSystemServiceLayer.DTOs.EventManager
        public DateTime? UpdatedAtUtc { get; set; }
        public int ConfirmedRegistrations { get; set; }
        public int WaitlistCount { get; set; }
+       public List<int> CategoryIds { get; set; } = new();
+       public List<string> Categories { get; set; } = new();
+       public bool IsVirtual { get; set; }
+       public string? VirtualMeetingUrl { get; set; }
    }
 
    public class AttendanceRecordDto

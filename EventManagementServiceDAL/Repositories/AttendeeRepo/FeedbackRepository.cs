@@ -23,10 +23,26 @@ namespace EventManagementServiceDAL.Repositories.AttendeeRepo
             return feedback;
         }
 
+        public async Task<EventFeedback> UpdateFeedbackAsync(EventFeedback feedback, CancellationToken ct = default)
+        {
+            _db.EventFeedbacks.Update(feedback);
+            await _db.SaveChangesAsync(ct);
+            return feedback;
+        }
+
         public async Task<EventFeedback?> GetUserFeedbackAsync(long eventId, long attendeeUserId, CancellationToken ct = default)
         {
             return await _db.EventFeedbacks
                 .FirstOrDefaultAsync(f => f.EventId == eventId && f.AttendeeUserId == attendeeUserId, ct);
+        }
+
+        public async Task<IReadOnlyList<long>> GetReviewedEventIdsForAttendeeAsync(long attendeeUserId, CancellationToken ct = default)
+        {
+            return await _db.EventFeedbacks
+                .AsNoTracking()
+                .Where(f => f.AttendeeUserId == attendeeUserId)
+                .Select(f => f.EventId)
+                .ToListAsync(ct);
         }
 
         public async Task<IReadOnlyList<EventFeedback>> GetFeedbacksForEventAsync(long eventId, CancellationToken ct = default)
